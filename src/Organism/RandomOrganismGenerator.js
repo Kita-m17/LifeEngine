@@ -45,7 +45,7 @@ class RandomOrganismGenerator {
         }
 
         // randomize the organism's brain
-        organism.brain.randomizeDecisions();
+        organism.brain.randomizeDecisions(true);
 
         return organism;
     }

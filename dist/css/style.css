@@ -123,16 +123,6 @@ input:hover,input:active {
 #speed-controller {
     grid-column: 1;
 }
-#slider, #slider-hot {
-    width: 70%;
-    max-width: none;
-}
-
-#color-scheme-container {
-    margin-top: 10px;
-    margin-bottom: 0px;
-    padding-bottom: 0px;
-}
 
 .vertical-buttons {
     float:right;
@@ -142,7 +132,7 @@ input:hover,input:active {
 }
 .editor-buttons {
     display: grid;
-    grid-template-rows: auto;
+    grid-template-rows: 3;
     grid-template-columns: 1;
     height: fit-content;
 }
@@ -188,7 +178,7 @@ input:hover,input:active {
     display: none;
     padding: 10px;
     overflow-y: auto;
-    padding-bottom: 0px;
+    height: 100%;
 }
 
 .tab#about {
@@ -323,28 +313,6 @@ input:hover,input:active {
     right: 10px;
 }
 
-.fps-box {
-    background-color: var(--btn);
-    border-radius: 8px;
-    padding: 0 5px 0 0;
-    margin: 0;
-    display: inline-flex;
-    align-items: center;
-}
-
-#fps-hot {
-    background-color: var(--btn);
-    border-radius: 8px;
-    padding: 5px 8px;
-    color: black;
-    display: inline-block;
-    min-width: 50px;
-    margin: 2px;
-    font-size: 16px;
-    vertical-align: middle;
-    width:100px;
-}
-
 .grid-size-in {
     width: 75px;
 }
@@ -410,103 +378,4 @@ input:hover,input:active {
 }
 #load-panel-title * {
     display: inline;
-}
-
-/* Brain Editor Window */
-.brain-editor-window {
-    position: absolute;
-    bottom: 100%;
-    right: 0;
-    left: 33.33%;
-    width: 66.67%;
-    height: 450px;
-    background-color: var(--panel-bg);
-    border: 5px solid var(--border);
-    border-bottom: 0;
-    border-radius: 15px 15px 0 0;
-    box-sizing: border-box;
-    padding: 10px;
-    display: none;
-}
-
-.brain-editor-btn {
-    margin-top: 5px;
-}
-
-#brain-editor-window #close-brain-editor {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-}
-
-/* Ensure organism details do not overflow */
-#organism-details,
-#edit-organism-details {
-    max-width: 100%;
-    overflow: hidden;
-    box-sizing: border-box;
-}
-
-.tab .left-half,
-.tab .right-half,
-.control-set {
-    box-sizing: border-box;
-}
-
-/* Allow inner halves to scroll instead of enlarging */
-.tab .left-half,
-.tab .right-half {
-    overflow-y: auto;
-    overflow-x: hidden;
-    height: 230px;
-}
-
-/* Brain Decision Map Styles */
-#brain-maps {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 10px;
-    overflow-x: auto;
-}
-.decision-map {
-    flex: 0 0 auto;
-    min-width: 300px;
-}
-.decision-map-header {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    margin-bottom: 4px;
-}
-.remove-state-btn {
-    background-color: var(--btn);
-    border: none;
-    color: black;
-    padding: 0 6px;
-    border-radius: 4px;
-    cursor: pointer;
-}
-.remove-state-btn:hover {
-    background-color: var(--btn-hover);
-}
-.remove-state-btn:active {
-    background-color: var(--btn-click);
-}
-.decision-map table {
-    border-collapse: collapse;
-}
-
-.decision-map th,
-.decision-map td {
-    border: 2px solid var(--border);
-    padding: 2px;
-    text-align: center;
-    background-color: var(--panel-bg);
-}
-
-.decision-map th {
-    font-weight: normal;
-    background-color: var(--panel-bg);
 }

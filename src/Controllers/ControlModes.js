@@ -4,8 +4,9 @@ const Modes = {
     WallDrop: 2,
     ClickKill: 3,
     Select: 4,
-    Clone: 5,
-    Drag: 6,
+    Edit: 5,
+    Clone: 6,
+    Drag: 7,
 }
 
 module.exports = Modes;

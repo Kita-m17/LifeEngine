@@ -33,7 +33,6 @@ class Renderer {
     }
 
     renderFullGrid(grid) {
-        this.clearUpdates();
         for (var col of grid) {
             for (var cell of col){
                 this.renderCell(cell);
@@ -86,28 +85,12 @@ class Renderer {
         this.cells_to_highlight.add(cell);
     }
 
-    renderCellHighlight(cell) {
+    renderCellHighlight(cell, color="yellow") {
         this.renderCell(cell);
-        let color = 'yellow';
-        if (cell.state.color === 'yellow') {
-            color = 'red';
-        }
-        const x = Math.round(cell.x);
-        const y = Math.round(cell.y);
-        const size = Math.round(this.cell_size);
         this.ctx.fillStyle = color;
-        this.ctx.strokeStyle = color;
-
-        if (size <= 2) {
-            // Small cells: fill entire cell
-            this.ctx.fillRect(x, y, size, size);
-        } else {
-            // 1-pixel border entirely inside the cell
-            this.ctx.fillRect(x, y, size, 1); // top
-            this.ctx.fillRect(x, y + size - 1, size, 1); // bottom
-            this.ctx.fillRect(x, y, 1, size); // left
-            this.ctx.fillRect(x + size - 1, y, 1, size); // right
-        }
+        this.ctx.globalAlpha = 0.5;
+        this.ctx.fillRect(cell.x, cell.y, this.cell_size, this.cell_size);
+        this.ctx.globalAlpha = 1;
         this.highlighted_cells.add(cell);
     }
 
@@ -119,12 +102,6 @@ class Renderer {
         if (clear_to_highlight) {
             this.cells_to_highlight.clear();
         }
-    }
-
-    clearUpdates() {
-        this.cells_to_render.clear();
-        this.cells_to_highlight.clear();
-        this.highlighted_cells.clear();
     }
 }
 

@@ -28,14 +28,15 @@ class Anatomy {
     addDefaultCell(state, c, r) {
         var new_cell = BodyCellFactory.createDefault(this.owner, state, c, r);
         this.cells.push(new_cell);
-        this.owner.brain.checkAddedCell(new_cell);
         return new_cell;
     }
 
     addRandomizedCell(state, c, r) {
+        if (state==CellStates.eye && !this.has_eyes) {
+            this.owner.brain.randomizeDecisions();
+        }
         var new_cell = BodyCellFactory.createRandom(this.owner, state, c, r);
         this.cells.push(new_cell);
-        this.owner.brain.checkAddedCell(new_cell);
         return new_cell;
     }
 
@@ -61,7 +62,6 @@ class Anatomy {
         for (var i=0; i<this.cells.length; i++) {
             var cell = this.cells[i];
             if (cell.loc_col == c && cell.loc_row == r){
-                this.owner.brain.checkRemovedCell(cell);
                 this.cells.splice(i, 1);
                 break;
             }

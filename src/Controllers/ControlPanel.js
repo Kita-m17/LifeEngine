@@ -3,12 +3,10 @@ const Modes = require("./ControlModes");
 const StatsPanel = require("../Stats/StatsPanel");
 const WorldConfig = require("../WorldConfig");
 const LoadController = require("./LoadController");
-const {ColorScheme, color_scheme_names} = require("../Rendering/ColorScheme");
 
 class ControlPanel {
     constructor(engine) {
         this.engine = engine;
-        this.fps = engine.fps;
         this.defineMinMaxControls();
         this.defineHotkeys();
         this.defineEngineSpeedControls();
@@ -16,8 +14,7 @@ class ControlPanel {
         this.defineHyperparameterControls();
         this.defineWorldControls();
         this.defineModeControls();
-        this.defineColorSchemeControls();
-        this.defineBrainEditorControls();
+        this.fps = engine.fps;
         this.organism_record=0;
         this.env_controller = this.engine.env.controller;
         this.editor_controller = this.engine.organism_editor.controller;
@@ -123,82 +120,16 @@ class ControlPanel {
 
     defineEngineSpeedControls(){
         this.slider = document.getElementById("slider");
-        this.hot_slider = document.getElementById("slider-hot");
-
-        // helper mappings
-        const sliderToFps = (val) => {
-            val = parseFloat(val);
-            if (val <= 50) {
-                // map 1..50 -> 1..120 linearly
-                const ratio = (val - 1) / 49; // 0..1
-                return Math.round(1 + ratio * 119);
-            }
-            const t = (val - 50) / 50; // 0-1
-            const exp = 120 * Math.pow(10000 / 120, t);
-            return Math.round(exp);
-        };
-
-        const fpsToSlider = (fps) => {
-            if (fps <= 120) {
-                return 1 + ((fps - 1) * 49) / 119;
-            }
-            const t = Math.log(fps / 120) / Math.log(10000 / 120); // 0-1
-            return 50 + t * 50;
-        };
-
-        // initialise slider position from current fps and label
-        this.slider.value = fpsToSlider(this.fps);
-        if (this.hot_slider) {
-            this.hot_slider.value = this.slider.value;
-        }
-        $('#fps').text("Target FPS: "+this.fps);
-
         this.slider.oninput = function() {
-            let newFps;
-            let fpsText;
-            if (this.slider.value == 100) {
-                newFps = 10000000;
-                fpsText = "MAXIMUM OVERDRIVE";
-            } else {
-                newFps = sliderToFps(this.slider.value);
-                fpsText = newFps;
-            }
-            
-            this.fps = newFps;
+            const max_fps = 300;
+            this.fps = parseInt(this.slider.value);
+            if (this.fps>=max_fps) this.fps = 1000;
             if (this.engine.running) {
-                this.changeEngineSpeed(newFps);
+                this.changeEngineSpeed(this.fps);
             }
-            $('#fps').text("Target FPS: " + fpsText);
-            if (this.hot_slider) this.hot_slider.value = this.slider.value;
+            let text = this.fps >= max_fps ? 'MAX' : this.fps;
+            $('#fps').text("Target FPS: "+text);
         }.bind(this);
-
-        // check initial value
-        if (this.slider.value == 100) {
-            this.slider.oninput();
-        }
-
-        if (this.hot_slider) {
-            this.hot_slider.oninput = function() {
-                let newFps;
-                let fpsText;
-                if (this.hot_slider.value == 100) {
-                    newFps = 10000000;
-                    fpsText = "MAXIMUM OVERDRIVE";
-                } else {
-                    newFps = sliderToFps(this.hot_slider.value);
-                    fpsText = newFps;
-                }
-                this.fps = newFps;
-                if (this.engine.running) {
-                    this.changeEngineSpeed(newFps);
-                }
-                $('#fps').text("Target FPS: " + fpsText);
-                this.slider.value = this.hot_slider.value;
-            }.bind(this);
-            if (this.hot_slider.value == 100) {
-                this.hot_slider.oninput();
-            }
-        }
 
         $('.pause-button').click(function() {
             // toggle pause
@@ -234,7 +165,7 @@ class ControlPanel {
                 self.stats_panel.startAutoRender();
             }
             else if (this.id === 'editor') {
-                self.editor_controller.setEditorPanel();
+                self.editor_controller.refreshDetailsPanel();
             }
             self.tab_id = this.id;
         });
@@ -253,7 +184,6 @@ class ControlPanel {
                 return;
             var cell_size = $('#cell-size').val();
             var fill_window = $('#fill-window').is(":checked");
-            this.setPaused(true);
             if (fill_window) {
                 this.engine.env.resizeFillWindow(cell_size);
             }
@@ -262,9 +192,9 @@ class ControlPanel {
                 var rows = $('#row-input').val();
                 this.engine.env.resizeGridColRow(cell_size, cols, rows);
             }
-            this.engine.env.reset(false, true);
+            this.engine.env.reset(false);
             this.stats_panel.reset();
-            this.setPaused(false);
+            
         }.bind(this));
 
         $('#auto-reset').change(function() {
@@ -324,9 +254,6 @@ class ControlPanel {
         let was_running = this.engine.running;
         this.setPaused(true);
         this.engine.env.loadRaw(env);
-        if (env.grid.cell_size) {
-            $('#cell-size').val(env.grid.cell_size);
-        }
         if (was_running)
             this.setPaused(false);
         this.updateHyperparamUIValues();
@@ -354,9 +281,6 @@ class ControlPanel {
         });
         $('#see-through-self').change(function() {
             Hyperparams.seeThroughSelf = this.checked;
-        });
-        $('#independent-eye-decisions').change(function() {
-            Hyperparams.evolveIndependentEyeDecisions = this.checked;
         });
         $('#food-drop-rate').change(function() {
             Hyperparams.foodDropProb = $('#food-drop-rate').val();
@@ -398,26 +322,14 @@ class ControlPanel {
             $('#change-prob').val(Math.floor(Hyperparams.changeProb));
             $('#remove-prob').val(Math.floor(Hyperparams.removeProb));
         });
-        $('#mutation-symmetry-chance').change(function() {
-            Hyperparams.mutationSymmetryChance = parseInt($('#mutation-symmetry-chance').val());
-        });
-        $('#brain-mutation-chance').change(function() {
-            Hyperparams.brainMutationChance = parseInt($('#brain-mutation-chance').val());
-        });
         $('#movers-produce').change( function() {
             Hyperparams.moversCanProduce = this.checked;
         });
         $('#food-blocks').change( function() {
             Hyperparams.foodBlocksReproduction = this.checked;        
         });
-        $('#dont-kill-same-species').change(function() {
-            Hyperparams.dontKillSameSpecies = this.checked;
-        });
         $('#reset-rules').click(() => {
             this.setHyperparamDefaults();
-        });
-        $('#safe-steps-per-tick').change(() => {
-            this.engine.setSafeStepsPerTick(parseInt($('#safe-steps-per-tick').val()));
         });
         $('#save-controls').click(() => {
             let data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(Hyperparams));
@@ -458,19 +370,15 @@ class ControlPanel {
         $('#add-prob').val(Hyperparams.addProb);
         $('#change-prob').val(Hyperparams.changeProb);
         $('#remove-prob').val(Hyperparams.removeProb);
-        $('#mutation-symmetry-chance').val(Hyperparams.mutationSymmetryChance);
-        $('#brain-mutation-chance').val(Hyperparams.brainMutationChance);
         $('#movers-produce').prop('checked', Hyperparams.moversCanProduce);
         $('#food-blocks').prop('checked', Hyperparams.foodBlocksReproduction);
-        $('#dont-kill-same-species').prop('checked', Hyperparams.dontKillSameSpecies);
         $('#food-drop-rate').val(Hyperparams.foodDropProb);
         $('#extra-mover-cost').val(Hyperparams.extraMoverFoodCost);
         $('#org-limit').val(Hyperparams.maxOrganisms);
         $('#look-range').val(Hyperparams.lookRange);
         $('#see-through-self').prop('checked', Hyperparams.seeThroughSelf);
         $('#global-mutation').val(Hyperparams.globalMutability);
-        $('#independent-eye-decisions').prop('checked', Hyperparams.evolveIndependentEyeDecisions);
-        
+
         if (!Hyperparams.useGlobalMutability) {
             $('.global-mutation-container').css('display', 'none');
             $('#avg-mut').css('display', 'block');
@@ -486,7 +394,7 @@ class ControlPanel {
         $('.edit-mode-btn').click( function() {
             $('#cell-selections').css('display', 'none');
             $('#organism-options').css('display', 'none');
-            self.editor_controller.setEditorPanel();
+            self.editor_controller.setDetailsPanel();
             switch(this.id) {
                 case "food-drop":
                     self.setMode(Modes.FoodDrop);
@@ -500,7 +408,9 @@ class ControlPanel {
                 case "select":
                     self.setMode(Modes.Select);
                     break;
-                
+                case "edit":
+                    self.setMode(Modes.Edit);
+                    break;
                 case "drop-org":
                     self.setMode(Modes.Clone);
                     break;
@@ -538,7 +448,7 @@ class ControlPanel {
         }.bind(this));
         $('#generate-random').click( function() {
             this.engine.organism_editor.createRandom();
-            this.editor_controller.setEditorPanel();
+            this.editor_controller.refreshDetailsPanel();
         }.bind(this));
         $('.reset-random').click( function() {
             this.engine.organism_editor.resetWithRandomOrgs(this.engine.env);
@@ -554,63 +464,6 @@ class ControlPanel {
         };
     }
 
-    defineColorSchemeControls() {
-        const select = $('#color-scheme-select');
-        if (!select.length) return;
-        color_scheme_names.forEach(name => select.append(`<option value="${name}">${name}</option>`));
-        select.val('neon');
-        select.change(function() { ColorScheme.loadColorScheme(this.value); });
-    }
-
-    // Brain Editor Controls
-    defineBrainEditorControls() {
-                // Replace brain detail panels with a single Brain-edit button while
-        // retaining the original .brain-details wrapper so existing visibility
-        // logic still works.
-        const btnHtml = '<button class="brain-editor-btn" title="Edit Brain">Brain <i class="fa fa-brain"></i></button>';
-
-        // Ensure each details section has a .brain-details container we can reuse.
-        ['#organism-details', '#edit-organism-details'].forEach(sel => {
-            let cont = $(sel + ' .brain-details');
-            if (!cont.length) {
-                $(sel).append('<div class="brain-details"></div>');
-                cont = $(sel + ' .brain-details');
-            }
-            cont.empty().append(btnHtml);
-        });
-
-        if (!$('#brain-editor-window').length) {
-            $('.control-panel').append(`
-                <div id="brain-editor-window" class="brain-editor-window">
-                    <div id="brain-info" class="brain-info"></div>
-                    <div id="brain-maps"></div>
-                    <button id="close-brain-editor"><i class="fa fa-times"></i></button>
-                </div>`);
-        }
-
-        this.brain_editor_open = false;
-
-        $('.brain-editor-btn').click(() => { this.toggleBrainEditor(); });
-        $('#close-brain-editor').click(() => { this.toggleBrainEditor(false); });
-    }
-
-    toggleBrainEditor(show = undefined) {
-        const win = $('#brain-editor-window');
-        if (!win.length) return;
-        if (show === undefined) {
-            show = !this.brain_editor_open;
-        }
-        win.css('display', show ? 'block' : 'none');
-        this.brain_editor_open = show;
-        if (show) {
-            this.editor_controller.updateBrainInfo();
-        } else {
-            if (this.engine && this.engine.organism_editor) {
-                this.engine.organism_editor.renderer.clearAllHighlights(true);
-            }
-        }
-    }
-
     setPaused(paused) {
         if (paused) {
             $('.pause-button').find("i").removeClass("fa-pause");
@@ -619,6 +472,7 @@ class ControlPanel {
                 this.engine.stop();
         }
         else if (!paused) {
+            
             $('.pause-button').find("i").addClass("fa-pause");
             $('.pause-button').find("i").removeClass("fa-play");
             if (!this.engine.running)
@@ -630,15 +484,19 @@ class ControlPanel {
         this.env_controller.mode = mode;
         this.editor_controller.mode = mode;
 
+        if (mode == Modes.Edit) {
+            this.editor_controller.setEditorPanel();
+        }
+
         if (mode == Modes.Clone) {
-            this.env_controller.org_to_clone = this.engine.organism_editor.organism;
+            this.env_controller.org_to_clone = this.engine.organism_editor.getCopyOfOrg();
         }
     }
 
     setEditorOrganism(org) {
         this.engine.organism_editor.setOrganismToCopyOf(org);
         this.editor_controller.clearDetailsPanel();
-        this.editor_controller.setEditorPanel();
+        this.editor_controller.setDetailsPanel();
     }
 
     changeEngineSpeed(change_val) {
@@ -665,7 +523,6 @@ class ControlPanel {
 
     update(delta_time) {
         $('#fps-actual').text("Actual FPS: " + Math.floor(this.engine.actual_fps));
-        $('#fps-hot').text(Math.floor(this.engine.actual_fps)+' FPS');
         $('#reset-count').text("Auto reset count: " + this.engine.env.reset_count);
         this.stats_panel.updateDetails();
         if (WorldConfig.headless)
