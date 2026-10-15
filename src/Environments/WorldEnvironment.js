@@ -12,9 +12,8 @@ const Species = require('../Stats/Species');
 const RandomOrganismGenerator = require('../Organism/RandomOrganismGenerator');
 
 class WorldEnvironment extends Environment{
-    constructor(engine, cell_size) {
+    constructor(cell_size) {
         super();
-        this.engine = engine;
         this.renderer = new Renderer('env-canvas', 'env', cell_size);
         this.controller = new EnvironmentController(this, this.renderer.canvas);
         this.num_rows = Math.ceil(this.renderer.height / cell_size);
@@ -161,23 +160,15 @@ class WorldEnvironment extends Environment{
     reset(confirm_reset=true, reset_life=true) {
         if (confirm_reset && !confirm('The current environment will be lost. Proceed?'))
             return false;
-        let restart = false;
-        if (this.engine.running) {
-            this.engine.last_fps = this.engine.fps;
-            this.engine.stop();
-            restart = true;
-        }
+
         this.organisms = [];
         this.grid_map.fillGrid(CellStates.empty, !WorldConfig.clear_walls_on_reset);
         this.renderer.renderFullGrid(this.grid_map.grid);
         this.total_mutability = 0;
         this.total_ticks = 0;
-        this.largest_cell_count = 0;
         FossilRecord.clear_record();
         if (reset_life)
             this.OriginOfLife();
-        if (restart)
-            this.engine.start(this.engine.last_fps);
         return true;
     }
 

@@ -77,7 +77,7 @@ class Eye extends CellState {
     render(ctx, cell, size) {
         ctx.fillStyle = this.color;
         ctx.fillRect(cell.x, cell.y, size, size);
-        if(size <= 1)
+        if(size == 1)
             return;
         var half = size/2;
         var x = -(size)/8

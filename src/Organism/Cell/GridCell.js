@@ -1,4 +1,5 @@
-const Hyperparams = require('../../Hyperparameters.js');
+const CellStates = require("./CellStates");
+const Hyperparams = require("../../Hyperparameters");
 
 // A cell exists in a grid map.
 class Cell{

@@ -167,7 +167,7 @@ class EnvironmentController extends CanvasController{
 
     dropOrganism(organism, col, row) {
 
-        // clone the organism and drop it in the world
+        // close the organism and drop it in the world
         var new_org = new Organism(col, row, this.env, organism);
 
         if (new_org.isClear(col, row)) {
