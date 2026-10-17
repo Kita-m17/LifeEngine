@@ -34,15 +34,18 @@ const FIELDS = [
     {key: 'placementSeed', group: 'Organisms', type: 'int', default: 1, applies: 'reset', label: 'Placement seed',
         title: 'Fixes where the starting organisms are placed. Change it for replicates of the same configuration.'},
     {key: 'numPredators', group: 'Organisms', type: 'int', default: 10, min: 0, step: 1, applies: 'reset', label: 'Predators'},
-    {key: 'numPrey', group: 'Organisms', type: 'int', default: 10, min: 0, step: 1, applies: 'reset', label: 'Prey (no claw)'},
-    {key: 'numClawPrey', group: 'Organisms', type: 'int', default: 10, min: 0, step: 1, applies: 'reset', label: 'Prey (with claw)'},
+    {key: 'numPrey', group: 'Organisms', type: 'int', default: 20, min: 0, step: 1, applies: 'reset', label: 'Prey (no claw)'},
+    // no prey start with a claw by default: claws have to evolve by mutation
+    {key: 'numClawPrey', group: 'Organisms', type: 'int', default: 0, min: 0, step: 1, applies: 'reset', label: 'Prey (with claw)'},
     {key: 'numPlants', group: 'Organisms', type: 'int', default: 39, min: 0, step: 1, applies: 'reset', label: 'Plants'},
 
     // mechanics
     {key: 'clawPredatorChance', group: 'Mechanics', type: 'float', default: 0.5, min: 0, max: 1, step: 0.1, applies: 'live',
         label: 'Clawed killer becomes predator (chance)',
         title: 'When a clawed organism gains its first killer cell, the chance it becomes a predator instead of staying prey. 0.5 is the coin flip; 1 turns the coin flip off (clawed organisms become predators like any other); 0 keeps them prey.'},
-    {key: 'clawCellsFree', group: 'Mechanics', type: 'bool', default: true, applies: 'live', label: 'Claw cells are free',
+    // off by default: free claw cells also benefit organisms that can't burrow (plants, predators), so claws spread for
+    // reasons that have nothing to do with burrowing
+    {key: 'clawCellsFree', group: 'Mechanics', type: 'bool', default: false, applies: 'live', label: 'Claw cells are free',
         title: 'Claw cells do not count toward the food an organism needs to reproduce (they still add lifespan and health).'},
     {key: 'hibernateWhileHidden', group: 'Mechanics', type: 'bool', default: true, applies: 'live', label: "Don't age while hidden",
         title: 'Ticks spent hidden underground do not count toward how long an organism can live.'},
