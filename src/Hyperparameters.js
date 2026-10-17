@@ -40,25 +40,12 @@ const Hyperparams = {
         this.hideFertilityCost = 10; // fertility removed from each grid cell under the organism when it hides
         this.minBurrowFertility = 1; // average fertility needed under the organism to burrow
 
-        // claw balance switches
-        this.clawCellsFree = true; // claw cells don't count toward the food needed to reproduce
-        this.hibernateWhileHidden = true; // ticks spent hidden don't count toward the lifespan
-        this.stayHiddenNearPredator = true; // stay hidden (for up to another hideDuration ticks) while a predator is close
-        this.stayHiddenRange = 6; // predator cells within this many cells of a hidden organism keep it underground
-        this.burrowOnlyWhenClose = true; // only burrow when the nearest seen predator is within burrowTriggerRange, otherwise run
-        this.burrowTriggerRange = 8;
+        // the claw balance switches, soil layout and regeneration, min plant fertility and starting organisms are
+        // in EnvironmentParams, so they can be varied and logged per run
 
         this.maxOrganisms = -1;
 
         this.maxFertility = 10;
-
-        this.fertilityRegenRate = 0.05;
-        this.minPlantFertility = 7; // average fertility needed under a plant for it to be born there
-
-        this.fertilityTerrainSeed = 42;
-        this.fertilityPatchThreshold = 0;
-        this.fertilityPatchResolution = 20;
-
     },
 
     loadJsonObj(obj) {

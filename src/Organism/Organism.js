@@ -1,6 +1,7 @@
 const CellStates = require("./Cell/CellStates");
 const Neighbors = require("../Grid/Neighbors");
 const Hyperparams = require("../Hyperparameters");
+const EnvironmentParams = require("../EnvironmentParams");
 const Directions = require("./Directions");
 const Anatomy = require("./Anatomy");
 const Brain = require("./Perception/Brain");
@@ -80,7 +81,7 @@ class Organism {
         if (!previousRoleState && (this.is_predator || (this.is_prey && this.anatomy.has_claw)))
             return;
         if (this.anatomy.has_claw)
-            this.is_predator = Math.random() < 0.5;
+            this.is_predator = Math.random() < EnvironmentParams.clawPredatorChance;
         else
             this.is_predator = true;
     }
@@ -88,7 +89,7 @@ class Organism {
     // amount of food required before it can reproduce
     foodNeeded() {
         let cell_count = this.anatomy.cells.length;
-        if (Hyperparams.clawCellsFree) {
+        if (EnvironmentParams.clawCellsFree) {
             // claw cells cost nothing to reproduce, but every organism still pays for at least one cell
             const claw_count = this.anatomy.cells.filter(cell => cell.state == CellStates.claw).length;
             cell_count = Math.max(cell_count - claw_count, 1);
@@ -358,7 +359,7 @@ class Organism {
     canGrowAt(col, row, rotation=this.rotation) {
         if (!this.isPlant())
             return true;
-        return this.averageFertility(col, row, rotation) >= Hyperparams.minPlantFertility;
+        return this.averageFertility(col, row, rotation) >= EnvironmentParams.minPlantFertility;
     }
 
     // average soil fertility under the organism's body if it were placed at col, row
@@ -431,7 +432,7 @@ class Organism {
     update() {
         this.lifetime++;
         // lifetime still counts every tick lived (for stats), hibernated ticks are just excluded from ageing
-        if (this.isHidden() && Hyperparams.hibernateWhileHidden)
+        if (this.isHidden() && EnvironmentParams.hibernateWhileHidden)
             this.hibernated_ticks++;
         if (this.lifetime - this.hibernated_ticks > this.lifespan()) {
             this.die();
@@ -440,9 +441,9 @@ class Organism {
         // hidden organisms stay put and do nothing until they surface
         if (this.isHidden()) {
             // about to surface: stay down while a predator is still close, for up to another hideDuration ticks
-            if (this.hide_ticks == 1 && Hyperparams.stayHiddenNearPredator &&
+            if (this.hide_ticks == 1 && EnvironmentParams.stayHiddenNearPredator &&
                 this.extra_hide_ticks < Hyperparams.hideDuration &&
-                this.predatorNearby(Hyperparams.stayHiddenRange)) {
+                this.predatorNearby(EnvironmentParams.stayHiddenRange)) {
                 this.extra_hide_ticks++;
                 return this.living;
             }

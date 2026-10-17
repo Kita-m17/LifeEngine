@@ -1,4 +1,5 @@
 const Hyperparams = require("../../Hyperparameters");
+const EnvironmentParams = require("../../EnvironmentParams");
 const CellStates = require("../Cell/CellStates");
 
 const Decision = {
@@ -279,8 +280,8 @@ class Brain {
             if (sees_predator) {
                 // prey with a claw burrow instead of running, unless the soil is too depleted
                 // (or, with burrowOnlyWhenClose, the predator is still far enough away to run from)
-                const close_enough = !Hyperparams.burrowOnlyWhenClose ||
-                    closestPredatorDistance <= Hyperparams.burrowTriggerRange;
+                const close_enough = !EnvironmentParams.burrowOnlyWhenClose ||
+                    closestPredatorDistance <= EnvironmentParams.burrowTriggerRange;
                 prey_decision = this.owner.canBurrow() && close_enough ? Decision.hide : Decision.retreat;
                 move_direction = predatorDirection;
             }

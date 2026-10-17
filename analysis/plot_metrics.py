@@ -10,7 +10,10 @@ folder in Observations/ is plotted. If there are several files of one kind (numb
 several exports), all of them are read and duplicate rows are dropped.
 
 Figures are saved as PNGs in <run>/plots/. With more than one run, a side-by-side comparison is saved to
-Observations/comparison.png.
+Observations/comparison.png and every run's configuration (the run_config export) to Observations/run_configs.csv.
+Runs whose configurations match apart from their seeds and label are treated as replicates: each such group is averaged
+(mean +- 1 std, plus a CSV of the means) in Observations/averages/, with the group means compared in
+comparison_means.png. Runs exported without a run_config are never grouped.
 """
 import argparse
 import csv
@@ -326,36 +329,127 @@ def plot_species_timeline(summary_rows, out):
     plt.close(fig)
 
 
-def plot_comparison(runs, path, window):
-    """The same metrics for every run on shared panels, one colour per run. Roles are compared rather than lineages
-    because lineage names depend on each run's starting organisms."""
-    panels = [
-        ("role", "Prey (burrowing)", "Prey (burrowing)"),
-        ("role", "Prey (non-burrowing)", "Prey (non-burrowing)"),
-        ("role", "Predators", "Predators"),
-        ("role", "Plants", "Plants"),
-        ("ts", "burrows", "Burrows per sample"),
-        ("ts", "soil_mean", "Avg. soil fertility"),
-        ("ts", "avg_killer", "Killer cells per organism"),
-        ("ts", "avg_mutation_rate", "Mutation rate (%)"),
-    ]
-    fig, axes = plt.subplots(len(panels), 1, sharex=True, figsize=(11, 2 * len(panels) + 1))
-    for i, (name, run) in enumerate(runs):
+# metrics compared across runs: (source, group or column, field, label). Roles are compared rather than lineages because
+# lineage names depend on each run's starting organisms
+COMPARE_PANELS = [
+    ("role", "Prey (burrowing)", "population", "Prey (burrowing)"),
+    ("role", "Prey (non-burrowing)", "population", "Prey (non-burrowing)"),
+    ("role", "Predators", "population", "Predators"),
+    ("role", "Plants", "population", "Plants"),
+    ("role", "Prey (burrowing)", "ever_burrowed", "Prey that have burrowed"),
+    ("ts", "burrows", None, "Burrows per sample"),
+    ("ts", "soil_mean", None, "Avg. soil fertility"),
+    ("ts", "avg_killer", None, "Killer cells per organism"),
+    ("ts", "avg_mutation_rate", None, "Mutation rate (%)"),
+]
+
+
+def metric_series(run, panel, window):
+    """{tick: value} for one comparison panel (populations raw, everything else smoothed); empty if not logged."""
+    source, name, field, _ = panel
+    if source == "role":
+        xs, ys = group_series(run["groups"], "role", field).get(name, ([], []))
+    else:
+        if not run["ts"] or name not in run["ts"][0]:
+            return {}
+        xs, ys = [int(r["tick"]) for r in run["ts"]], [num(r[name]) for r in run["ts"]]
+    if field != "population":
+        ys = smooth(ys, window)
+    return {x: y for x, y in zip(xs, ys) if y is not None}
+
+
+def mean_std(series_list):
+    """Per tick mean, standard deviation and number of runs, over the runs that reached that tick."""
+    ticks = sorted({t for series in series_list for t in series})
+    stats = []
+    for t in ticks:
+        values = [series[t] for series in series_list if t in series]
+        mean = sum(values) / len(values)
+        std = (sum((v - mean) ** 2 for v in values) / (len(values) - 1)) ** 0.5 if len(values) > 1 else 0.0
+        stats.append((t, mean, std, len(values)))
+    return stats
+
+
+def plot_comparison(groups, path, window, title, show_replicates=False):
+    """Every group on shared panels, one colour per group. A group of several runs is drawn as its mean with a band of
+    +-1 standard deviation (and, with show_replicates, each run faintly); a group of one is just that run."""
+    panels = [p for p in COMPARE_PANELS if any(metric_series(run, p, window) for _, members in groups for run in members)]
+    fig, axes = plt.subplots(len(panels), 1, sharex=True, figsize=(11, 2 * len(panels) + 1), squeeze=False)
+    axes = axes[:, 0]
+    for i, (name, members) in enumerate(groups):
         color = PALETTE[i % len(PALETTE)]
-        role_pop = group_series(run["groups"], "role", "population")
-        ticks = [int(r["tick"]) for r in run["ts"]]
-        for ax, (source, field, label) in zip(axes, panels):
-            if source == "role" and field in role_pop:
-                ax.plot(*role_pop[field], color=color, label=name)
-            elif source == "ts" and run["ts"] and field in run["ts"][0]:
-                ax.plot(ticks, smooth([num(r[field]) for r in run["ts"]], window), color=color, label=name)
-            ax.set_ylabel(label, fontsize=8)
+        label = name if len(members) == 1 else "%s (mean of %d)" % (name, len(members))
+        for ax, panel in zip(axes, panels):
+            series_list = [metric_series(run, panel, window) for run in members]
+            if show_replicates and len(members) > 1:
+                for series in series_list:
+                    ax.plot(sorted(series), [series[t] for t in sorted(series)], color=color, linewidth=0.6, alpha=0.35)
+            stats = mean_std([s for s in series_list if s])
+            if not stats:
+                continue
+            ticks = [t for t, _, _, _ in stats]
+            ax.plot(ticks, [m for _, m, _, _ in stats], color=color, label=label)
+            if len(members) > 1:
+                ax.fill_between(ticks, [m - sd for _, m, sd, _ in stats], [m + sd for _, m, sd, _ in stats], color=color, alpha=0.15, linewidth=0)
+            ax.set_ylabel(panel[3], fontsize=8)
     axes[0].legend(fontsize=8, loc="upper right")
-    axes[0].set_title("Run comparison")
+    axes[0].set_title(title)
     axes[-1].set_xlabel("Tick")
     fig.tight_layout()
     fig.savefig(path, dpi=150)
     plt.close(fig)
+
+
+def write_group_means(name, members, path, window):
+    """The averaged metrics of one group of replicate runs as a CSV: per tick mean, std and number of runs per metric."""
+    columns = {}
+    for panel in COMPARE_PANELS:
+        stats = mean_std([s for s in (metric_series(run, panel, window) for run in members) if s])
+        if stats:
+            key = panel[3].lower().replace(" ", "_").replace("(", "").replace(")", "").replace(".", "").replace("%", "pct")
+            columns[key] = {t: (m, sd, n) for t, m, sd, n in stats}
+    ticks = sorted({t for col in columns.values() for t in col})
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["tick"] + [k + suffix for k in columns for suffix in ("_mean", "_std", "_n")])
+        for t in ticks:
+            row = [t]
+            for col in columns.values():
+                row += list(col.get(t, ("", "", "")))
+            writer.writerow(row)
+
+
+# run_config keys that differ between replicates of one configuration (seeds, the label, and what was measured)
+REPLICATE_KEYS = ("soilSeed", "placementSeed", "runLabel", "soil_fertile_frac")
+
+
+def read_config(folder):
+    """The run_config export of a run as {key: value}; empty for runs exported before it existed."""
+    return {row["key"]: row["value"] for row in read_rows(folder, "run_config")}
+
+
+def config_key(folder, config):
+    """Runs with the same key are replicates: same settings, possibly different seeds. Runs without a config are
+    only ever grouped with themselves."""
+    if not config:
+        return ("folder", folder)
+    return tuple(sorted((k, v) for k, v in config.items() if k not in REPLICATE_KEYS and not k.startswith("placed_")))
+
+
+def write_config_table(runs, path):
+    """One row per run with its full configuration, and the settings that differ between runs printed."""
+    keys = []
+    for _, run in runs:
+        for key in run["config"]:
+            if key not in keys:
+                keys.append(key)
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["run"] + keys)
+        for name, run in runs:
+            writer.writerow([name] + [run["config"].get(key, "") for key in keys])
+    varying = [k for k in keys if len({run["config"].get(k, "") for _, run in runs}) > 1]
+    print("Settings that differ between runs:", ", ".join(varying) if varying else "none")
 
 
 def detect_predator_lineages(summary_rows):
@@ -456,12 +550,42 @@ def main():
         if args.follow:
             plot_followed(read_rows(folder, "species_log"), events, out, args.follow, args.smooth)
         print("Saved plots to", out)
-        runs.append((os.path.basename(folder), {"ts": ts_rows, "groups": groups_rows}))
+        config = read_config(folder)
+        # runs are named by folder (replicates share a label), with the label alongside when there is one
+        name = os.path.basename(folder) + (" (%s)" % config["runLabel"] if config.get("runLabel") else "")
+        runs.append((name, {"ts": ts_rows, "groups": groups_rows, "config": config, "folder": folder}))
 
     if len(runs) > 1:
-        path = os.path.join(OBSERVATIONS, "comparison.png")
-        plot_comparison(runs, path, args.smooth)
+        # cross-run outputs go in the folder holding the runs (Observations/ normally)
+        root = os.path.commonpath([os.path.dirname(run["folder"]) for _, run in runs])
+        path = os.path.join(root, "comparison.png")
+        plot_comparison([(name, [run]) for name, run in runs], path, args.smooth, "Run comparison")
         print("Saved comparison to", path)
+        write_config_table(runs, os.path.join(root, "run_configs.csv"))
+
+        # runs with the same settings apart from their seeds are replicates: average them
+        groups = {}
+        for name, run in runs:
+            groups.setdefault(config_key(run["folder"], run["config"]), []).append((name, run))
+        named = []
+        for i, members in enumerate(groups.values()):
+            labels = {run["config"].get("runLabel") for _, run in members}
+            label = labels.pop() if len(labels) == 1 and None not in labels and "" not in labels else None
+            if not label:
+                label = members[0][0] if len(members) == 1 else "config %d" % (i + 1)
+            named.append((label, [run for _, run in members]))
+        if any(len(members) > 1 for _, members in named):
+            avg_dir = os.path.join(root, "averages")
+            os.makedirs(avg_dir, exist_ok=True)
+            for name, members in named:
+                if len(members) > 1:
+                    safe = "".join(ch if ch.isalnum() or ch in "-_ " else "_" for ch in name)
+                    plot_comparison([(name, members)], os.path.join(avg_dir, safe + ".png"), args.smooth,
+                                    "%s: mean +- 1 std over %d replicates" % (name, len(members)), show_replicates=True)
+                    write_group_means(name, members, os.path.join(avg_dir, safe + ".csv"), args.smooth)
+                    print("Averaged %d replicates of '%s' (%s)" % (len(members), name, ", ".join(os.path.basename(r["folder"]) for r in members)))
+            plot_comparison(named, os.path.join(avg_dir, "comparison_means.png"), args.smooth, "Configuration comparison (replicate means)")
+            print("Saved averages to", avg_dir)
 
 
 if __name__ == "__main__":

@@ -177,6 +177,22 @@ const FossilRecord = {
         return summary;
     },
 
+    // the configuration the current run started with (EnvironmentParams, grid size, organisms placed and the evolution
+    // controls), exported as run_config so runs can be compared and replicates averaged
+    setRunConfig(config) {
+        this.run_config = config;
+    },
+
+    // a run setting changed partway through a run, so the run no longer matches its starting configuration
+    recordParamChange(key, old_value, new_value) {
+        this.addEvent('param_changed', key + ' changed from ' + old_value + ' to ' + new_value);
+    },
+
+    runConfigCSV() {
+        let config = this.run_config || {};
+        return this.toCSV(['key', 'value'], Object.keys(config).map(key => [key, config[key]]));
+    },
+
     addEvent(type, label, species_name='') {
         this.events.push({tick: this.env.total_ticks, type: type, label: label, species: species_name});
     },
@@ -656,6 +672,7 @@ const FossilRecord = {
             events:this.events,
             extinct_species:this.extinct_species,
             initial_soil:this.initial_soil,
+            run_config:this.run_config,
         };
         let species = {};
         for (let s of Object.values(this.extant_species)) {

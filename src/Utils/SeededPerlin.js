@@ -62,3 +62,4 @@ function createSeededPerlin(seed) {
 }
 
 module.exports = createSeededPerlin;
+module.exports.mulberry32 = mulberry32; // also used to place the starting organisms deterministically

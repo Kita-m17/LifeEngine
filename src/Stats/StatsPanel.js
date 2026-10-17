@@ -76,6 +76,7 @@ class StatsPanel {
         $('#export-species').click(() => this.download('species_summary', FossilRecord.speciesSummaryCSV()));
         $('#export-groups').click(() => this.download('groups_log', FossilRecord.groupsLogCSV()));
         $('#export-events').click(() => this.download('key_moments', FossilRecord.eventsCSV()));
+        $('#export-config').click(() => this.download('run_config', FossilRecord.runConfigCSV()));
         $('#export-all').click(() => this.exportAll());
         $('#auto-save-logs').change(() => {
             if (this.autoSave() && FossilRecord.log_paused)
@@ -153,6 +154,7 @@ class StatsPanel {
         this.download('groups_log' + part, FossilRecord.groupsLogCSV());
         this.download('species_summary', FossilRecord.speciesSummaryCSV());
         this.download('key_moments', FossilRecord.eventsCSV());
+        this.download('run_config', FossilRecord.runConfigCSV());
     }
 
     updateChart() {

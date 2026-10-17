@@ -1,4 +1,6 @@
 const Hyperparams = require("../Hyperparameters");
+const EnvironmentParams = require("../EnvironmentParams");
+const FossilRecord = require("../Stats/FossilRecord");
 const Modes = require("./ControlModes");
 const StatsPanel = require("../Stats/StatsPanel");
 const WorldConfig = require("../WorldConfig");
@@ -14,6 +16,7 @@ class ControlPanel {
         this.defineEngineSpeedControls();
         this.defineTabNavigation();
         this.defineHyperparameterControls();
+        this.defineRunSetupControls();
         this.defineWorldControls();
         this.defineModeControls();
         this.defineColorSchemeControls();
@@ -370,9 +373,6 @@ class ControlPanel {
         $('#food-drop-rate').change(function() {
             Hyperparams.foodDropProb = $('#food-drop-rate').val();
         });
-        $('#fertility-regen-rate').change(function() {
-            Hyperparams.fertilityRegenRate = parseFloat($('#fertility-regen-rate').val());
-        });
         $('#extra-mover-cost').change(function() {
             Hyperparams.extraMoverFoodCost = parseInt($('#extra-mover-cost').val());
         });
@@ -384,27 +384,6 @@ class ControlPanel {
         });
         $('#min-burrow-fertility').change(function() {
             Hyperparams.minBurrowFertility = parseFloat($('#min-burrow-fertility').val());
-        });
-        $('#claw-cells-free').change(function() {
-            Hyperparams.clawCellsFree = this.checked;
-        });
-        $('#hibernate-while-hidden').change(function() {
-            Hyperparams.hibernateWhileHidden = this.checked;
-        });
-        $('#stay-hidden-near-predator').change(function() {
-            Hyperparams.stayHiddenNearPredator = this.checked;
-        });
-        $('#stay-hidden-range').change(function() {
-            Hyperparams.stayHiddenRange = parseInt($('#stay-hidden-range').val());
-        });
-        $('#burrow-only-when-close').change(function() {
-            Hyperparams.burrowOnlyWhenClose = this.checked;
-        });
-        $('#burrow-trigger-range').change(function() {
-            Hyperparams.burrowTriggerRange = parseInt($('#burrow-trigger-range').val());
-        });
-        $('#min-plant-fertility').change(function() {
-            Hyperparams.minPlantFertility = parseFloat($('#min-plant-fertility').val());
         });
         $('#org-limit').change(function() {
             Hyperparams.maxOrganisms = parseInt($('#org-limit').val());
@@ -478,6 +457,7 @@ class ControlPanel {
             reader.onload = (e) => {
                 let result=JSON.parse(e.target.result);
                 Hyperparams.loadJsonObj(result);
+                EnvironmentParams.loadJsonObj(result); // controls files saved before these settings moved to Run Setup
                 this.updateHyperparamUIValues();
                 // have to clear the value so change() will be triggered if the same file is uploaded again
                 $('#upload-hyperparams')[0].value = '';
@@ -509,18 +489,10 @@ class ControlPanel {
         $('#food-blocks').prop('checked', Hyperparams.foodBlocksReproduction);
         $('#dont-kill-same-species').prop('checked', Hyperparams.dontKillSameSpecies);
         $('#food-drop-rate').val(Hyperparams.foodDropProb);
-        $('#fertility-regen-rate').val(Hyperparams.fertilityRegenRate);
         $('#extra-mover-cost').val(Hyperparams.extraMoverFoodCost);
         $('#hide-duration').val(Hyperparams.hideDuration);
         $('#hide-fertility-cost').val(Hyperparams.hideFertilityCost);
         $('#min-burrow-fertility').val(Hyperparams.minBurrowFertility);
-        $('#claw-cells-free').prop('checked', Hyperparams.clawCellsFree);
-        $('#hibernate-while-hidden').prop('checked', Hyperparams.hibernateWhileHidden);
-        $('#stay-hidden-near-predator').prop('checked', Hyperparams.stayHiddenNearPredator);
-        $('#stay-hidden-range').val(Hyperparams.stayHiddenRange);
-        $('#burrow-only-when-close').prop('checked', Hyperparams.burrowOnlyWhenClose);
-        $('#burrow-trigger-range').val(Hyperparams.burrowTriggerRange);
-        $('#min-plant-fertility').val(Hyperparams.minPlantFertility);
         $('#org-limit').val(Hyperparams.maxOrganisms);
         $('#look-range').val(Hyperparams.lookRange);
         $('#see-through-self').prop('checked', Hyperparams.seeThroughSelf);
@@ -534,6 +506,95 @@ class ControlPanel {
         else {
             $('.global-mutation-container').css('display', 'block');
             $('#avg-mut').css('display', 'none');
+        }
+        this.updateRunSetupUIValues();
+    }
+
+    // the Run Setup tab, built from EnvironmentParams.FIELDS so a setting added there gets an input automatically
+    defineRunSetupControls() {
+        for (let field of EnvironmentParams.FIELDS) {
+            let id = 'env-param-' + field.key;
+            let input = $('<input>').attr('id', id);
+            if (field.type === 'bool')
+                input.attr('type', 'checkbox');
+            else if (field.type === 'text')
+                input.attr('type', 'text');
+            else {
+                input.attr('type', 'number').attr('step', field.step || 1);
+                if (field.min !== undefined) input.attr('min', field.min);
+                if (field.max !== undefined) input.attr('max', field.max);
+            }
+            let title = (field.title || '') + (field.applies === 'reset' ? ' Takes effect when the world resets.' : '');
+            let label = $('<label>').attr('for', id).attr('title', title).text(field.label + (field.type === 'bool' ? '' : ':'));
+            $('#run-setup-' + field.group).append(label, input, $('<br>'));
+            input.change(() => this.setRunSetupValue(field, input));
+        }
+        $('#run-setup-apply').click(() => {
+            if (!this.engine.env.reset(true, true)) return;
+            this.stats_panel.reset();
+            $('#run-setup-note').text('');
+        });
+        $('#run-setup-defaults').click(() => {
+            EnvironmentParams.setDefaults();
+            this.updateRunSetupUIValues();
+            $('#run-setup-note').text('Defaults restored. Soil and starting organisms change when the world resets.');
+        });
+        $('#run-setup-save').click(() => {
+            let data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(EnvironmentParams.toJson(), null, 2));
+            let downloadEl = document.getElementById('download-el');
+            downloadEl.setAttribute("href", data);
+            downloadEl.setAttribute("download", (EnvironmentParams.runLabel || "run_setup") + ".json");
+            downloadEl.click();
+        });
+        $('#run-setup-load').click(() => {
+            $('#upload-run-setup').click();
+        });
+        $('#upload-run-setup').change((e) => {
+            let files = e.target.files;
+            if (!files.length) return;
+            let reader = new FileReader();
+            reader.onload = (e) => {
+                EnvironmentParams.loadJsonObj(JSON.parse(e.target.result));
+                this.updateRunSetupUIValues();
+                $('#run-setup-note').text('Loaded. Soil and starting organisms change when the world resets.');
+                $('#upload-run-setup')[0].value = '';
+            };
+            reader.readAsText(files[0]);
+        });
+        this.updateRunSetupUIValues();
+    }
+
+    setRunSetupValue(field, input) {
+        let value;
+        if (field.type === 'bool') value = input.is(':checked');
+        else if (field.type === 'text') value = input.val();
+        else value = field.type === 'int' ? parseInt(input.val()) : parseFloat(input.val());
+        if (field.type !== 'bool' && field.type !== 'text') {
+            if (isNaN(value)) value = EnvironmentParams[field.key];
+            if (field.min !== undefined) value = Math.max(field.min, value);
+            if (field.max !== undefined) value = Math.min(field.max, value);
+            input.val(value);
+        }
+        let old_value = EnvironmentParams[field.key];
+        if (value === old_value) return;
+        EnvironmentParams[field.key] = value;
+        if (field.key === 'runLabel') {
+            // just a name, so the running run is relabelled rather than marked as changed
+            if (FossilRecord.run_config) FossilRecord.run_config.runLabel = value;
+        }
+        else if (field.applies === 'live') {
+            if (this.engine.env.total_ticks > 0) FossilRecord.recordParamChange(field.key, old_value, value);
+        }
+        else {
+            $('#run-setup-note').text('Soil and starting organism changes take effect when the world resets (Apply & Reset World).');
+        }
+    }
+
+    updateRunSetupUIValues() {
+        for (let field of EnvironmentParams.FIELDS) {
+            let input = $('#env-param-' + field.key);
+            if (field.type === 'bool') input.prop('checked', EnvironmentParams[field.key]);
+            else input.val(EnvironmentParams[field.key]);
         }
     }
 

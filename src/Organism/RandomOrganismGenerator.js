@@ -2,6 +2,9 @@ const CellStates = require("./Cell/CellStates");
 const Organism = require("./Organism");
 const Brain = require("./Perception/Brain")
 const Directions = require("./Directions");
+const Hyperparams = require("../Hyperparameters");
+const EnvironmentParams = require("../EnvironmentParams");
+const {mulberry32} = require("../Utils/SeededPerlin");
 
 class RandomOrganismGenerator {
 
@@ -51,73 +54,67 @@ class RandomOrganismGenerator {
         return organism;
     }
 
-    static generatePredatorPrey(env) {
-        const organisms = [];
-        const rowSpacing = 0.15;
-
-        for (let i = 0; i < 10; i++) {
-            const columnIndex = Math.floor(i / 5);
-            const rowIndex = i % 5;
-            const row = Math.floor(env.num_rows * (0.2 + rowIndex * rowSpacing));
-            const groupCol = Math.floor(env.num_cols * (0.2 + columnIndex * 0.4));
-            const preyOffset = Math.min(8, Math.max(1, Math.floor(env.num_cols * 0.04)));
-            const predator = new Organism(
-                groupCol,
-                row,
-                env
-            );
-            predator.is_predator = true;       // your choice; the JSON had false
-            predator.move_range = 4;
-            predator.move_speed = 1;
-            predator.direction = Directions.right;
-
-            const a = predator.anatomy;
-            a.addDefaultCell(CellStates.mouth, 0, 0);   // centre
-            a.addDefaultCell(CellStates.killer, 0, -1);   // left
-            a.addDefaultCell(CellStates.mouth, 0, 1);   // right
-            a.addDefaultCell(CellStates.mover, -1, 0);   // above centre
-
-            const eyeTop = a.addDefaultCell(CellStates.eye, -2, 0);
-            eyeTop.direction = Directions.left;
-
-            const eyeBottom = a.addDefaultCell(CellStates.eye, 1, 0);
-            eyeBottom.direction = Directions.right;
-
-            // brain: hunt prey and avoid other Killers
-            predator.brain.decisions[CellStates.mouth.name] = Brain.Decision.chase;
-            predator.brain.decisions[CellStates.mover.name] = Brain.Decision.chase;
-            predator.brain.decisions[CellStates.eye.name] = Brain.Decision.chase;
-            predator.brain.decisions[CellStates.killer.name] = Brain.Decision.retreat;
-
-            organisms.push(predator);
-
-            // regular prey to the right of the predator, burrowing prey to the left, both facing it
-            // (the predator reaches 2 cells left but only 1 right, hence the extra -1).
-            // the regular prey starts rotated so its eye looks left at the predator, otherwise it walks straight into it
-            const prey = RandomOrganismGenerator.createPrey(env, groupCol + preyOffset, row);
-            prey.rotation = Directions.left;
-            organisms.push(prey);
-            organisms.push(RandomOrganismGenerator.createClawPrey(env, groupCol - preyOffset - 1, row));
-        }
-
-        return organisms;
-    }
-
-    // plants on an evenly spaced lattice, keeping only spots that are free and fertile enough,
-    // so the layout is the same every run for a given terrain. Call after the animals are on the grid.
-    static generatePlants(env) {
-        const plants = [];
-        const spacing = Math.max(8, Math.floor(Math.min(env.num_cols, env.num_rows) / 6));
-        for (let row = Math.floor(spacing / 2); row < env.num_rows - 1; row += spacing) {
-            for (let col = Math.floor(spacing / 2); col < env.num_cols - 1; col += spacing) {
-                const plant = RandomOrganismGenerator.createPlant(env, col, row);
-                if (plant.isClear(col, row) && plant.canGrowAt(col, row)) {
-                    plant.updateGrid(); // claim the spot so later plants can't overlap it
-                    plants.push(plant);
+    // places the starting organisms from EnvironmentParams at seeded random free spots, so the same placement seed (on
+    // the same grid and soil) always gives the same layout. Plants only go where the soil lets them grow. add() puts
+    // each organism in the world straight away so later ones can't overlap it. Returns how many of each were placed,
+    // which can be fewer than asked for if the grid is too crowded.
+    static generateSeeded(env, add) {
+        const rand = mulberry32(EnvironmentParams.placementSeed);
+        const roles = [
+            ['predators', EnvironmentParams.numPredators, RandomOrganismGenerator.createPredator],
+            ['claw_prey', EnvironmentParams.numClawPrey, RandomOrganismGenerator.createClawPrey],
+            ['prey', EnvironmentParams.numPrey, RandomOrganismGenerator.createPrey],
+            ['plants', EnvironmentParams.numPlants, RandomOrganismGenerator.createPlant],
+        ];
+        const placed = {};
+        for (const [role, count, create] of roles) {
+            placed[role] = 0;
+            for (let i = 0; i < count; i++) {
+                for (let attempt = 0; attempt < RandomOrganismGenerator.placementAttempts; attempt++) {
+                    const col = Math.floor(rand() * env.num_cols);
+                    const row = Math.floor(rand() * env.num_rows);
+                    const rotation = Math.floor(rand() * 4);
+                    const direction = Math.floor(rand() * 4);
+                    const org = create(env, col, row);
+                    if (Hyperparams.rotationEnabled)
+                        org.rotation = rotation;
+                    org.direction = direction;
+                    if (org.isClear(col, row) && org.canGrowAt(col, row)) {
+                        add(org);
+                        placed[role]++;
+                        break;
+                    }
                 }
             }
         }
-        return plants;
+        return placed;
+    }
+
+    // the seeded predator: hunts prey and avoids other killers
+    static createPredator(env, col, row) {
+        const predator = new Organism(col, row, env);
+        predator.is_predator = true;
+        predator.move_range = 4;
+        predator.move_speed = 1;
+        predator.direction = Directions.right;
+
+        const a = predator.anatomy;
+        a.addDefaultCell(CellStates.mouth, 0, 0);   // centre
+        a.addDefaultCell(CellStates.killer, 0, -1);   // left
+        a.addDefaultCell(CellStates.mouth, 0, 1);   // right
+        a.addDefaultCell(CellStates.mover, -1, 0);   // above centre
+
+        const eyeTop = a.addDefaultCell(CellStates.eye, -2, 0);
+        eyeTop.direction = Directions.left;
+
+        const eyeBottom = a.addDefaultCell(CellStates.eye, 1, 0);
+        eyeBottom.direction = Directions.right;
+
+        predator.brain.decisions[CellStates.mouth.name] = Brain.Decision.chase;
+        predator.brain.decisions[CellStates.mover.name] = Brain.Decision.chase;
+        predator.brain.decisions[CellStates.eye.name] = Brain.Decision.chase;
+        predator.brain.decisions[CellStates.killer.name] = Brain.Decision.retreat;
+        return predator;
     }
 
     // the classic Life Engine starting plant: a mouth with two diagonal producers
@@ -176,5 +173,6 @@ class RandomOrganismGenerator {
 
 RandomOrganismGenerator.organismLayers = 4;
 RandomOrganismGenerator.cellSpawnChance = 0.75;
+RandomOrganismGenerator.placementAttempts = 1000; // random spots tried per starting organism before giving up
 
 module.exports = RandomOrganismGenerator;
