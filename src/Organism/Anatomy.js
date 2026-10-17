@@ -26,7 +26,17 @@ class Anatomy {
         return true;
     }
 
+    canAddCellType(state, replacingCell=null) {
+        if (state.name === CellStates.claw.name)
+            return !this.cells.some(cell => cell !== replacingCell && cell.state === CellStates.producer);
+        if (state.name === CellStates.producer.name)
+            return !this.cells.some(cell => cell !== replacingCell && cell.state === CellStates.claw);
+        return true;
+    }
+
     addDefaultCell(state, c, r, updateRole=true) {
+        if (!this.canAddCellType(state))
+            return null;
         const previousRoleState = this.getRoleState();
         var new_cell = BodyCellFactory.createDefault(this.owner, state, c, r);
         this.cells.push(new_cell);
@@ -38,6 +48,8 @@ class Anatomy {
     }
 
     addRandomizedCell(state, c, r, updateRole=true) {
+        if (!this.canAddCellType(state))
+            return null;
         const previousRoleState = this.getRoleState();
         var new_cell = BodyCellFactory.createRandom(this.owner, state, c, r);
         this.cells.push(new_cell);
@@ -49,6 +61,8 @@ class Anatomy {
     }
 
     addInheritCell(parent_cell) {
+        if (!this.canAddCellType(parent_cell.state))
+            return null;
         var new_cell = BodyCellFactory.createInherited(this.owner, parent_cell);
         this.cells.push(new_cell);
         this.checkTypeChange();
@@ -56,6 +70,9 @@ class Anatomy {
     }
 
     replaceCell(state, c, r, randomize=true) {
+        const replacedCell = this.getLocalCell(c, r);
+        if (!replacedCell || !this.canAddCellType(state, replacedCell))
+            return null;
         const previousRoleState = this.getRoleState();
         this.removeCell(c, r, true, false);
         let newCell;

@@ -103,6 +103,8 @@ class RandomOrganismGenerator {
         a.addDefaultCell(CellStates.killer, 0, -1);   // left
         a.addDefaultCell(CellStates.mouth, 0, 1);   // right
         a.addDefaultCell(CellStates.mover, -1, 0);   // above centre
+        a.addDefaultCell(CellStates.armor, -1, -1);
+        a.addDefaultCell(CellStates.armor, -1, 1);
 
         const eyeTop = a.addDefaultCell(CellStates.eye, -2, 0);
         eyeTop.direction = Directions.left;
@@ -140,14 +142,11 @@ class RandomOrganismGenerator {
         return prey;
     }
 
-    // cross-shaped burrowing prey: the regular prey with a claw underneath
+    // right-facing variant of the regular prey
     //         mouth
     //  mouth  mover  eye(looking up)
-    //         claw
     static createClawPrey(env, col, row) {
-        const prey = RandomOrganismGenerator.createPrey(env, col, row, Directions.right);
-        prey.anatomy.addDefaultCell(CellStates.claw, 0, 1);
-        return prey;
+        return RandomOrganismGenerator.createPrey(env, col, row, Directions.right);
     }
 
     static newPrey(env, col, row, direction) {
@@ -163,8 +162,7 @@ class RandomOrganismGenerator {
 
         var neighbors = organism.anatomy.getNeighborsOfCell(x, y);
         if (neighbors.length && Math.random() < spawnChance) {
-            organism.anatomy.addRandomizedCell(CellStates.getRandomLivingType(), x, y);
-            return true;
+            return !!organism.anatomy.addRandomizedCell(CellStates.getRandomLivingType(), x, y);
         }
         return false;
     }

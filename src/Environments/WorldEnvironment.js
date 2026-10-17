@@ -49,6 +49,7 @@ class WorldEnvironment extends Environment{
         for (let cell of fertility_changes) {
             this.renderer.addToRender(cell);
         }
+        this.regrowPlant();
 
         this.total_ticks ++;
         if (this.total_ticks % this.data_update_rate == 0) {
@@ -136,6 +137,23 @@ class WorldEnvironment extends Environment{
 
     canAddOrganism() {
         return this.organisms.length < Hyperparams.maxOrganisms || Hyperparams.maxOrganisms < 0;
+    }
+
+    regrowPlant() {
+        if (!this.canAddOrganism() || Math.random() * 100 >= EnvironmentParams.plantRegrowthRate)
+            return;
+
+        for (let attempt = 0; attempt < RandomOrganismGenerator.placementAttempts; attempt++) {
+            const col = Math.floor(Math.random() * this.num_cols);
+            const row = Math.floor(Math.random() * this.num_rows);
+            const plant = RandomOrganismGenerator.createPlant(this, col, row);
+            if (plant.isClear(col, row) && plant.canGrowAt(col, row)) {
+                this.addOrganism(plant);
+                FossilRecord.addSpecies(plant, null);
+                FossilRecord.recordBirth(plant);
+                return;
+            }
+        }
     }
 
     averageMutability() {

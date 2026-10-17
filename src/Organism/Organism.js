@@ -176,9 +176,8 @@ class Organism {
             let growth_direction = Neighbors.all[Math.floor(Math.random() * Neighbors.all.length)];
             let c = branch.loc_col + growth_direction[0];
             let r = branch.loc_row + growth_direction[1];
-            if (this.anatomy.canAddCellAt(c, r)) {
-                added = true;
-                this.anatomy.addRandomizedCell(state, c, r);
+            if (this.anatomy.canAddCellAt(c, r) && this.anatomy.canAddCellType(state)) {
+                added = !!this.anatomy.addRandomizedCell(state, c, r);
 
                 // attempt symmetrical mutations across horizontal, vertical, and both diagonal axes
                 const axes = ['h', 'v', 'd'];
@@ -206,7 +205,7 @@ class Organism {
                                 mr = -r;
                                 break;
                         }
-                        if (this.anatomy.canAddCellAt(mc, mr)) {
+                        if (this.anatomy.canAddCellAt(mc, mr) && this.anatomy.canAddCellType(state)) {
                             this.anatomy.addRandomizedCell(state, mc, mr);
                         }
                     }
@@ -216,8 +215,7 @@ class Organism {
         if (this.calcRandomChance(Hyperparams.changeProb)){
             let cell = this.anatomy.getRandomCell();
             let state = CellStates.getRandomLivingType();
-            this.anatomy.replaceCell(state, cell.loc_col, cell.loc_row);
-            changed = true;
+            changed = !!this.anatomy.replaceCell(state, cell.loc_col, cell.loc_row);
         }
         if (this.calcRandomChance(Hyperparams.removeProb)){
             if(this.anatomy.cells.length > 1) {
@@ -413,8 +411,7 @@ class Organism {
         for (var cell of this.anatomy.cells) {
             var real_c = this.c + cell.rotatedCol(this.rotation);
             var real_r = this.r + cell.rotatedRow(this.rotation);
-            const deathState = this.is_predator || this.is_prey ? CellStates.empty : CellStates.food;
-            this.env.changeCell(real_c, real_r, deathState, null);
+            this.env.changeCell(real_c, real_r, CellStates.empty, null);
         }
         FossilRecord.recordDeath(this);
         this.species.decreasePop();

@@ -29,13 +29,16 @@ const FIELDS = [
     {key: 'minPlantFertility', group: 'Soil', type: 'float', default: 7, min: 0, step: 0.5, applies: 'live',
         label: 'Min plant fertility',
         title: 'Average soil fertility needed under a plant (a producer that cannot move) for it to be born or placed there.'},
+    {key: 'plantRegrowthRate', group: 'Soil', type: 'float', default: 1, min: 0, max: 100, step: 0.1, applies: 'live',
+        label: 'Plant regrowth chance (%)',
+        title: 'Chance each tick that the environment tries to seed a plant in an empty spot with enough fertile soil.'},
 
     // starting organisms, placed at seeded random free spots (plants only where they can grow)
     {key: 'placementSeed', group: 'Organisms', type: 'int', default: 1, applies: 'reset', label: 'Placement seed',
         title: 'Fixes where the starting organisms are placed. Change it for replicates of the same configuration.'},
     {key: 'numPredators', group: 'Organisms', type: 'int', default: 10, min: 0, step: 1, applies: 'reset', label: 'Predators'},
     {key: 'numPrey', group: 'Organisms', type: 'int', default: 10, min: 0, step: 1, applies: 'reset', label: 'Prey (no claw)'},
-    {key: 'numClawPrey', group: 'Organisms', type: 'int', default: 10, min: 0, step: 1, applies: 'reset', label: 'Prey (with claw)'},
+    {key: 'numClawPrey', group: 'Organisms', type: 'int', default: 10, min: 0, step: 1, applies: 'reset', label: 'Prey (right-facing)'},
     {key: 'numPlants', group: 'Organisms', type: 'int', default: 39, min: 0, step: 1, applies: 'reset', label: 'Plants'},
 
     // mechanics

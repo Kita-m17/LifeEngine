@@ -41,10 +41,15 @@ class OrganismEditor extends Environment{
         var prev_cell = this.organism.anatomy.getLocalCell(loc_c, loc_r)
         if (prev_cell != null) {
             var new_cell = this.organism.anatomy.replaceCell(state, prev_cell.loc_col, prev_cell.loc_row, false);
+            if (!new_cell)
+                return;
             this.changeCell(c, r, state, new_cell);
         }
         else if (this.organism.anatomy.canAddCellAt(loc_c, loc_r)){
-            this.changeCell(c, r, state, this.organism.anatomy.addDefaultCell(state, loc_c, loc_r));
+            var new_cell = this.organism.anatomy.addDefaultCell(state, loc_c, loc_r);
+            if (!new_cell)
+                return;
+            this.changeCell(c, r, state, new_cell);
         }
         this.organism.species = new Species(this.organism.anatomy, null, 0);
         this.updateCloneRef();
