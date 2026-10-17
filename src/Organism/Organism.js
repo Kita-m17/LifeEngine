@@ -48,6 +48,38 @@ class Organism {
             this.anatomy.addInheritCell(c);
         }
         this.brain.copy(parent.brain);
+        this.updateRoleFromAnatomy();
+    }
+
+    updateRoleFromAnatomy(previousRoleState=null) {
+        const hasKiller = this.anatomy.cells.some(cell => cell.state === CellStates.killer);
+        const hasProducer = this.anatomy.cells.some(cell => cell.state === CellStates.producer);
+        if (!hasKiller) {
+            if (!previousRoleState || previousRoleState.hasKiller)
+                this.is_predator = false;
+            return;
+        }
+        if (hasProducer) {
+            this.is_predator = false;
+            return;
+        }
+        if (previousRoleState && previousRoleState.hasKiller && !previousRoleState.hasProducer)
+            return;
+        if (previousRoleState && previousRoleState.hasKiller) {
+            this.is_predator = true;
+            this.is_prey = false;
+            return;
+        }
+        if (!previousRoleState && (this.is_predator || (this.is_prey && this.anatomy.has_claw)))
+            return;
+        if (this.anatomy.has_claw) {
+            this.is_predator = Math.random() < 0.5;
+            this.is_prey = !this.is_predator;
+        }
+        else {
+            this.is_predator = true;
+            this.is_prey = false;
+        }
     }
 
     // amount of food required before it can reproduce
@@ -539,6 +571,7 @@ class Organism {
     loadRaw(org) {
         SerializeHelper.overwriteNonObjects(org, this);
         this.anatomy.loadRaw(org.anatomy)
+        this.updateRoleFromAnatomy();
         if (org.brain)
             this.brain.copy(org.brain)
     }
