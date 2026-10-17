@@ -308,7 +308,7 @@
 						<p id='avg-lifespan' title='Average ticks lived by the organisms that died in the last sample interval'>Avg. Lifespan at Death: </p>
 						<p id='burrower-count'>Organisms with Claw Cells: </p>
 						<p id='soil-health'>Average Soil Fertility: </p>
-						<label for="species-threshold" title='An offspring founds a new species once its body differs from its species founder by this many cells (added, removed or changed). Only affects new births.'>New species after</label>
+						<label for="species-threshold" title='An offspring founds a new species once its body differs from its species founder by this many cells (added, removed or changed), or when it switches between predator and non-predator. Only affects new births.'>New species after</label>
 						<input type="number" id="species-threshold" min="1" value=3 step="1"> mutations<br>
 						<label for="chart-option">Chart: </label>
 						<select name="chart-option" id="chart-option">
@@ -325,6 +325,15 @@
 							<option value="group-fitness">Fitness by Group</option>
 							<option value="group-lifespan">Lifespan at Death by Group</option>
 						</select>
+						<div id='claw-controls'>
+							<label for="claw-role" title='Which organisms the burrowing chart counts, to compare claws used for burrowing with claws carried for other reasons'>Claws of: </label>
+							<select name="claw-role" id="claw-role">
+								<option value="all">All organisms</option>
+								<option value="Plants">Plants</option>
+								<option value="Predators">Predators</option>
+								<option value="Prey">Prey</option>
+							</select>
+						</div>
 						<div id='group-controls'>
 							<label for="group-by">Group by: </label>
 							<select name="group-by" id="group-by">
@@ -343,7 +352,7 @@
 						<button id='export-timeseries' title='One row per sample: population, species, growth / birth / death rates, fitness, lifespan at death, cell averages, claw organisms, hidden organisms, burrows and soil'>Time Series</button>
 						<button id='export-species-log' title='One row per species per sample: population, births, deaths, growth rate, fitness, lifespan at death and burrows over time'>Per-Species Log</button>
 						<button id='export-species' title='One row per species (living and extinct): age, peak population, offspring, fitness, lifespan at death and body plan'>Species Summary</button>
-						<button id='export-groups' title='One row per lineage / role per sample: population, births, deaths, growth / birth / death rates, fitness, lifespan at death and burrows'>Groups Log</button>
+						<button id='export-groups' title='One row per lineage / role per sample: population, births, deaths, growth / birth / death rates, fitness, lifespan at death, burrows, organisms with claw cells, how many of those have ever burrowed, and how many are underground'>Groups Log</button>
 						<button id='export-events' title='Key moments: first burrow, claw cells appearing / disappearing, soil degrading, notable species establishing and going extinct'>Key Moments</button>
 						<button id='export-all'>All</button><br>
 						<label for="auto-save-logs" title='Downloads every CSV when all organisms die (before the world resets). Also downloads the per-species and groups logs as numbered parts whenever they reach 100,000 rows, then clears them from memory. When off, those logs stop growing at 100,000 rows.'>Auto-save logs to Downloads</label>

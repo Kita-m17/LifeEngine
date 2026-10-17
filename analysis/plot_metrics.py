@@ -2,7 +2,7 @@
 
 Usage:
     pip install matplotlib
-    python analysis/plot_metrics.py [RUN ...] [--smooth 5] [--follow SPECIES] [--top 8] [--predator-lineage predator]
+    python analysis/plot_metrics.py [RUN ...] [--smooth 5] [--follow SPECIES] [--top 8] [--predator-lineage NAME]
 
 Each run is a folder under Observations/ holding the files from one run (timeseries, groups_log, species_log,
 species_summary, key_moments). RUN can be a folder name inside Observations/ or a path; with no RUN, every run
@@ -255,8 +255,8 @@ def plot_predators(groups_rows, events, out, window, predator_lineages):
     """Prey against the seeded predator lineage and the predators that evolved in other lineages. Evolved predators
     are the Predators role minus the seeded lineage. Organisms are now tagged is_predator from their anatomy, so most
     evolved predators are tagged and visible to prey; runs from before that change had none tagged, so there this line
-    is killers prey couldn't see. Either way the role is classified from anatomy, so it also counts mobile producers
-    with killer cells, which stay untagged. Plants with killer cells are classified as Plants and show up in the killer
+    is killers prey couldn't see (including mobile producers with killer cells, which are now tagged prey and counted
+    as Prey instead). Plants with killer cells are classified as Plants and show up in the killer
     cell plot of traits.png instead."""
     role_pop = group_series(groups_rows, "role", "population")
     lineage_pop = group_series(groups_rows, "lineage", "population")
@@ -358,6 +358,57 @@ def plot_comparison(runs, path, window):
     plt.close(fig)
 
 
+def detect_predator_lineages(summary_rows):
+    """Seeded predator lineages from the species summary: founders (no ancestor) placed at tick 0 whose body has killer
+    cells and no producer, the same rule the simulation uses to tag predators. Founders are named randomly, so this
+    finds them whatever they're called."""
+    founders = [r for r in summary_rows if not r["ancestor"]]
+    predators = [r for r in founders if num(r.get("killer")) and not num(r.get("producer"))]
+    seeded = [r for r in predators if int(r["start_tick"]) == 0]
+    return sorted({r["species"] for r in seeded or predators})
+
+
+CLAW_PANELS = [
+    ("All organisms", None),
+    ("Plants", ["Plants"]),
+    ("Predators", ["Predators"]),
+    ("Prey", ["Prey (burrowing)", "Prey (non-burrowing)"]),
+]
+
+
+def plot_claws(groups_rows, events, out):
+    """Claws used for burrowing against claws carried for other reasons, one panel per role. 'Have burrowed' counts the
+    organisms with claw cells that have hidden underground at least once in their life; the gap between that and 'with
+    claw cells' is claws that aren't (yet) being used. Only prey burrow, so claws on plants and predators never are."""
+    role_rows = [r for r in groups_rows if r["grouping"] == "role"]
+    if not role_rows or "with_claw" not in role_rows[0]:
+        print("  no per-role claw columns in groups_log (exported before they were added), skipping claws_by_role.png")
+        return
+    totals = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))  # panel -> field -> tick -> sum
+    for r in role_rows:
+        for title, roles in CLAW_PANELS:
+            if roles is None or r["group"] in roles:
+                for field in ("population", "with_claw", "ever_burrowed", "hidden"):
+                    totals[title][field][int(r["tick"])] += num(r[field]) or 0
+    lines = [("population", "Population", "#7f7f7f", 0.8), ("with_claw", "With claw cells", "#8c564b", 1.4),
+             ("ever_burrowed", "With claw cells that have burrowed", "#e377c2", 1.4), ("hidden", "Underground", "#9467bd", 1.2)]
+    fig, axes = plt.subplots(len(CLAW_PANELS), 1, sharex=True, figsize=(11, 3 * len(CLAW_PANELS) + 1))
+    for ax, (title, _) in zip(axes, CLAW_PANELS):
+        for field, label, color, width in lines:
+            series = totals[title][field]
+            ticks = sorted(series)
+            ax.plot(ticks, [series[t] for t in ticks], color=color, linewidth=width, label=label)
+        draw_events(ax, events)
+        ax.set_ylabel("Organisms")
+        ax.set_title(title, fontsize=10, loc="left")
+    axes[0].legend(fontsize=8, loc="upper left")
+    axes[-1].set_xlabel("Tick")
+    fig.suptitle("Claws used for burrowing vs. claws carried, by role")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "claws_by_role.png"), dpi=150)
+    plt.close(fig)
+
+
 def find_runs(names):
     """Run folders named on the command line (inside Observations/ or as paths), or every run in Observations/."""
     if not names:
@@ -378,9 +429,9 @@ def main():
     parser.add_argument("--follow", help="species name to plot with all its descendant species")
     parser.add_argument("--top", type=int, default=8, help="max lineages to draw")
     parser.add_argument("--predator-lineage", action="append",
-                        help="seeded predator lineage(s), used to separate evolved predators (default: predator)")
+                        help="seeded predator lineage(s), used to separate evolved predators "
+                             "(default: detected from the species summary)")
     args = parser.parse_args()
-    predator_lineages = args.predator_lineage or ["predator"]
 
     folders = find_runs(args.runs)
     if not folders:
@@ -392,12 +443,16 @@ def main():
         ts_rows = sorted(read_rows(folder, "timeseries"), key=lambda r: int(r["tick"]))
         groups_rows = read_rows(folder, "groups_log")
         events = read_rows(folder, "key_moments")
+        summary_rows = read_rows(folder, "species_summary")
+        predator_lineages = args.predator_lineage or detect_predator_lineages(summary_rows)
+        print("%s: seeded predator lineage(s): %s" % (os.path.basename(folder), ", ".join(predator_lineages) or "none found"))
 
         plot_groups(groups_rows, events, out, args.smooth, args.top)
         plot_burrow_soil(ts_rows, groups_rows, events, out)
+        plot_claws(groups_rows, events, out)
         plot_predators(groups_rows, events, out, args.smooth, predator_lineages)
         plot_traits(ts_rows, events, out, args.smooth)
-        plot_species_timeline(read_rows(folder, "species_summary"), out)
+        plot_species_timeline(summary_rows, out)
         if args.follow:
             plot_followed(read_rows(folder, "species_log"), events, out, args.follow, args.smooth)
         print("Saved plots to", out)

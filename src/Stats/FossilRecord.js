@@ -38,6 +38,10 @@ const FossilRecord = {
 
     isNewSpecies: function(org, parent_species) {
         if (!parent_species) return true;
+        // switching between predator and non-predator changes what an organism eats, so it founds a new species
+        // whatever its body (species loaded from saves without a founder role skip this)
+        if (parent_species.founder_role && (parent_species.founder_role === 'predator') !== org.is_predator)
+            return true;
         return parent_species.mutationDistance(org.anatomy) >= this.species_threshold;
     },
 
@@ -120,6 +124,8 @@ const FossilRecord = {
 
     // called every time an organism hides underground
     recordBurrow(org) {
+        // per organism, so claws that are actually used for burrowing can be told apart from claws that are just carried
+        org.times_burrowed = (org.times_burrowed || 0) + 1;
         org.species.recordBurrow();
         this.role_intervals[this.classifyRole(org)].burrows++;
         this.interval_burrows++;
@@ -211,6 +217,7 @@ const FossilRecord = {
         this.log_paused = false;
         this.role_intervals = {};
         this.role_pops = {};
+        this.claw_groups = {role: {}, lineage: {}};
         for (let role of ROLES)
             this.role_intervals[role] = {births: 0, deaths: 0, lifetime: 0, offspring: 0, burrows: 0};
         this.interval_burrows = 0;
@@ -293,15 +300,18 @@ const FossilRecord = {
             sample[grouping] = {};
             for (let name in groups) {
                 let g = groups[name];
+                let claws = this.claw_groups[grouping][name] || {with_claw: 0, ever_burrowed: 0, hidden: 0};
                 let fitness = g.deaths > 0 ? g.offspring / g.deaths : null;
                 let lifespan = g.deaths > 0 ? g.lifetime / g.deaths : null;
                 let rates = this.perCapitaRates(g.pop, g.births, g.deaths);
                 sample[grouping][name] = {pop: g.pop, fitness: fitness, lifespan: lifespan, growth: rates.growth,
-                    birth_rate: rates.birth_rate, death_rate: rates.death_rate, burrows: g.burrows};
+                    birth_rate: rates.birth_rate, death_rate: rates.death_rate, burrows: g.burrows,
+                    with_claw: claws.with_claw, ever_burrowed: claws.ever_burrowed, hidden: claws.hidden};
                 let blank = (v) => v === null ? '' : v;
                 if (!this.log_paused)
                     this.groups_log.push([tick, grouping, name, g.pop, g.deaths, blank(fitness), blank(lifespan), g.burrows,
-                        g.births, blank(rates.birth_rate), blank(rates.death_rate), blank(rates.growth)]);
+                        g.births, blank(rates.birth_rate), blank(rates.death_rate), blank(rates.growth),
+                        claws.with_claw, claws.ever_burrowed, claws.hidden]);
             }
         }
         this.group_samples.push(sample);
@@ -335,6 +345,15 @@ const FossilRecord = {
         this.evolved_claw_species = null;
         var hidden = 0;
         this.role_pops = {};
+        // per role and lineage: organisms with claw cells, how many of those have ever burrowed, and how many are
+        // underground now. claws on organisms that never burrow are carried for other reasons (they still add cells)
+        this.claw_groups = {role: {}, lineage: {}};
+        let addClaw = (grouping, name, has_claw, used, is_hidden) => {
+            let g = this.claw_groups[grouping][name] || (this.claw_groups[grouping][name] = {with_claw: 0, ever_burrowed: 0, hidden: 0});
+            if (has_claw) g.with_claw++;
+            if (used) g.ever_burrowed++;
+            if (is_hidden) g.hidden++;
+        };
         for (let org of this.env.organisms) {
             let role = this.classifyRole(org);
             this.role_pops[role] = (this.role_pops[role] || 0) + 1;
@@ -351,7 +370,11 @@ const FossilRecord = {
                     if (!this.evolved_claw_species) this.evolved_claw_species = org.species.name;
                 }
             }
-            if (org.isHidden && org.isHidden()) hidden++;
+            let is_hidden = !!(org.isHidden && org.isHidden());
+            if (is_hidden) hidden++;
+            let used = has_burrow && org.times_burrowed > 0;
+            addClaw('role', role, has_burrow, used, is_hidden);
+            addClaw('lineage', org.species.getLineage(), has_burrow, used, is_hidden);
         }
         this.burrower_counts.push(burrowers);
         this.evolved_claw_counts.push(evolved_claw);
@@ -530,6 +553,7 @@ const FossilRecord = {
             avg_species_age: this.av_species_age[last],
             burrowers: this.burrower_counts[last],
             burrower_frac: this.burrower_fracs[last],
+            claw_users: Object.values(this.claw_groups.role).reduce((sum, g) => sum + g.ever_burrowed, 0),
             evolved_claw: this.evolved_claw_counts[last],
             hidden: this.hidden_counts[last],
             burrows: this.burrow_counts[last],
@@ -580,7 +604,7 @@ const FossilRecord = {
 
     groupsLogCSV() {
         return this.toCSV(['tick', 'grouping', 'group', 'population', 'deaths', 'fitness', 'lifespan_at_death', 'burrows',
-            'births', 'birth_rate', 'death_rate', 'growth_rate'], this.groups_log);
+            'births', 'birth_rate', 'death_rate', 'growth_rate', 'with_claw', 'ever_burrowed', 'hidden'], this.groups_log);
     },
 
     speciesSummaryCSV() {

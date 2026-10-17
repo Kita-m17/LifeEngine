@@ -52,6 +52,13 @@ class Organism {
     }
 
     updateRoleFromAnatomy(previousRoleState=null) {
+        this.updatePredatorTag(previousRoleState);
+        // everything that isn't a predator or a plant is prey, so organisms that evolve to move (or predators that
+        // lose their killer cells) can be hunted instead of sitting outside the food web
+        this.is_prey = !this.is_predator && !this.isPlant();
+    }
+
+    updatePredatorTag(previousRoleState) {
         const hasKiller = this.anatomy.cells.some(cell => cell.state === CellStates.killer);
         const hasProducer = this.anatomy.cells.some(cell => cell.state === CellStates.producer);
         if (!hasKiller) {
@@ -67,19 +74,15 @@ class Organism {
             return;
         if (previousRoleState && previousRoleState.hasKiller) {
             this.is_predator = true;
-            this.is_prey = false;
             return;
         }
+        // is_prey here is still the inherited flag: a clawed prey that kept its killer cells stays prey
         if (!previousRoleState && (this.is_predator || (this.is_prey && this.anatomy.has_claw)))
             return;
-        if (this.anatomy.has_claw) {
+        if (this.anatomy.has_claw)
             this.is_predator = Math.random() < 0.5;
-            this.is_prey = !this.is_predator;
-        }
-        else {
+        else
             this.is_predator = true;
-            this.is_prey = false;
-        }
     }
 
     // amount of food required before it can reproduce
@@ -149,8 +152,9 @@ class Organism {
             this.env.addOrganism(org);
             org.updateGrid();
             this.offspring++;
-            // a mutated child only founds a new species once it has drifted far enough from its species' founder
-            if (mutated && FossilRecord.isNewSpecies(org, this.species)) {
+            // a child only founds a new species once it has drifted far enough from its species' founder, or has
+            // switched between predator and non-predator (which can happen at birth without a mutation)
+            if ((mutated || org.is_predator !== this.is_predator) && FossilRecord.isNewSpecies(org, this.species)) {
                 FossilRecord.addSpecies(org, this.species);
             }
             else {
