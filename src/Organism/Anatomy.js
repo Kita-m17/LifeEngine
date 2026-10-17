@@ -26,49 +26,76 @@ class Anatomy {
         return true;
     }
 
-    addDefaultCell(state, c, r) {
+    addDefaultCell(state, c, r, updateRole=true) {
+        const previousRoleState = this.getRoleState();
         var new_cell = BodyCellFactory.createDefault(this.owner, state, c, r);
         this.cells.push(new_cell);
         this.owner.brain.checkAddedCell(new_cell);
+        this.checkTypeChange();
+        if (updateRole)
+            this.owner.updateRoleFromAnatomy(previousRoleState);
         return new_cell;
     }
 
-    addRandomizedCell(state, c, r) {
+    addRandomizedCell(state, c, r, updateRole=true) {
+        const previousRoleState = this.getRoleState();
         var new_cell = BodyCellFactory.createRandom(this.owner, state, c, r);
         this.cells.push(new_cell);
         this.owner.brain.checkAddedCell(new_cell);
+        this.checkTypeChange();
+        if (updateRole)
+            this.owner.updateRoleFromAnatomy(previousRoleState);
         return new_cell;
     }
 
     addInheritCell(parent_cell) {
         var new_cell = BodyCellFactory.createInherited(this.owner, parent_cell);
         this.cells.push(new_cell);
+        this.checkTypeChange();
         return new_cell;
     }
 
     replaceCell(state, c, r, randomize=true) {
-        this.removeCell(c, r, true);
+        const previousRoleState = this.getRoleState();
+        this.removeCell(c, r, true, false);
+        let newCell;
         if (randomize) {
-            return this.addRandomizedCell(state, c, r);
+            newCell = this.addRandomizedCell(state, c, r, false);
         }
         else {
-            return this.addDefaultCell(state, c, r);
+            newCell = this.addDefaultCell(state, c, r, false);
         }
+        this.owner.updateRoleFromAnatomy(previousRoleState);
+        return newCell;
     }
 
-    removeCell(c, r, allow_center_removal=false) {
+    removeCell(c, r, allow_center_removal=false, updateRole=true) {
         if (c == 0 && r == 0 && !allow_center_removal)
             return false;
+        const previousRoleState = this.getRoleState();
+        let removed = false;
         for (var i=0; i<this.cells.length; i++) {
             var cell = this.cells[i];
             if (cell.loc_col == c && cell.loc_row == r){
                 this.owner.brain.checkRemovedCell(cell);
                 this.cells.splice(i, 1);
+                removed = true;
                 break;
             }
         }
-        this.checkTypeChange();
+        if (removed) {
+            this.checkTypeChange();
+            if (updateRole)
+                this.owner.updateRoleFromAnatomy(previousRoleState);
+        }
         return true;
+    }
+
+    getRoleState() {
+        return {
+            hasKiller: this.cells.some(cell => cell.state === CellStates.killer),
+            hasProducer: this.cells.some(cell => cell.state === CellStates.producer)
+        };
     }
 
     getLocalCell(c, r) {
