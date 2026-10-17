@@ -1,4 +1,5 @@
 const Hyperparams = require('../../Hyperparameters.js');
+const EnvironmentParams = require('../../EnvironmentParams.js');
 
 // A cell exists in a grid map.
 class Cell{
@@ -30,8 +31,8 @@ class Cell{
     regenerateFertility() {
         if (this.owner !== null) return false;
         if (this.fertility >= this.fertility_cap) return false;
-        if ((Math.random() * 100) < Hyperparams.fertilityRegenRate) {
-            this.setFertility(Math.min(this.fertility + 1, this.fertility_cap));
+        if ((Math.random() * 100) < EnvironmentParams.soilRegenRate) {
+            this.setFertility(Math.min(this.fertility + EnvironmentParams.soilRegenAmount, this.fertility_cap));
             return true;
         }
         return false;

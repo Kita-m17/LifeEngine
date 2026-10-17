@@ -45,6 +45,7 @@
 					<p class='tabnav-item' id='editor'>Editor</p>
 					<p class='tabnav-item' id='world-controls'>World Controls</p>
 					<p class='tabnav-item' id='hyperparameters'>Evolution Controls</p>
+					<p class='tabnav-item' id='run-setup'>Run Setup</p>
 					<p class='tabnav-item' id='stats'>Statistics</p>
 					<button id="minimize" title="Minimze Control Panel."><i class="fa fa-minus-square"></i></button>
 				</div>
@@ -218,9 +219,6 @@
 						<label for="food-drop-rate" title='Rate at which food is automatically generated and dropped in the world'>Auto food drop rate:</label>
 						<input type="number" id="food-drop-rate" value=0 max="1000">
 						<br>
-						<label for="fertility-regen-rate" title='Percent chance each tick that an unoccupied soil cell regains 1 fertility, up to its cap'>Fertility regen rate:</label>
-						<input type="number" id="fertility-regen-rate" min="0" max="100" step="0.01" value=0.01>
-						<br>
 						<label for="insta-kill" title='When on, killer cells immediately kill organisms they touch. When off, organisms have as much health as they have cells and only take 1 damage from killer cells.'>One touch kill</label>
 						<input type="checkbox" id="insta-kill">
 						<br>
@@ -272,27 +270,30 @@
 						<label for="min-burrow-fertility" title='Average soil fertility needed under an organism for it to burrow. On poorer soil, prey run instead.'>Min burrow fertility:</label>
 						<input type="number" id="min-burrow-fertility" min="0" value=5>
 						<br>
-						<label for="claw-cells-free" title='When on, claw cells do not count toward the food an organism needs to reproduce.'>Claw cells are free</label>
-						<input type="checkbox" id="claw-cells-free">
-						<br>
-						<label for="hibernate-while-hidden" title='When on, ticks spent hidden underground do not count toward how long an organism can live.'>Don't age while hidden</label>
-						<input type="checkbox" id="hibernate-while-hidden">
-						<br>
-						<label for="stay-hidden-near-predator" title='When on, a hidden organism stays underground while a predator is within the range below, for up to another hide duration.'>Stay hidden near predators</label>
-						<input type="checkbox" id="stay-hidden-near-predator">
-						<label for="stay-hidden-range" title='How close (in cells) a predator has to be to keep a hidden organism underground.'>within</label>
-						<input type="number" id="stay-hidden-range" min="1" max="50" value=6 step="1">
-						<br>
-						<label for="burrow-only-when-close" title='When on, prey with a claw only burrow when the predator they see is within the range below. Further away, they run instead.'>Only burrow when predator is close</label>
-						<input type="checkbox" id="burrow-only-when-close">
-						<label for="burrow-trigger-range" title='How close (in cells) a seen predator has to be before prey with a claw burrow.'>within</label>
-						<input type="number" id="burrow-trigger-range" min="1" max="50" value=8 step="1">
-						<br>
-						<label for="min-plant-fertility" title='Average soil fertility needed under a plant (a producer that cannot move) for it to be born or placed there.'>Min plant fertility:</label>
-						<input type="number" id="min-plant-fertility" min="0" value=5>
-						<br>
+						<p title='Soil, starting organisms, the clawed-killer coin flip and the claw balance switches are in the Run Setup tab'>Soil, starting organisms and claw settings: see Run Setup</p>
 						<a id="download-el" style="display: none;"></a>
 						<input id="upload-hyperparams" style="display: none;" type="file">
+					</div>
+				</div>
+				<div id='run-setup' class='tab'>
+					<div class='left-half'>
+						<h2>Run Setup</h2>
+						<p title='Every setting here is exported with the logs (Run Config), so runs can be compared and replicates averaged'>Soil and starting organisms are placed when the world resets. The layout is deterministic for a given seed and grid size: turn off Fill Window in World Controls to keep the grid size fixed.</p>
+						<div class='run-setup-group' id='run-setup-Run'></div>
+						<h3>Soil</h3>
+						<div class='run-setup-group' id='run-setup-Soil'></div>
+						<h3>Starting Organisms</h3>
+						<div class='run-setup-group' id='run-setup-Organisms'></div>
+						<button id='run-setup-apply' title='Reset the world with these soil and organism settings'>Apply &amp; Reset World</button>
+					</div>
+					<div class='right-half'>
+						<button id='run-setup-defaults'>Reset to defaults</button>
+						<button id='run-setup-save' title='Download these settings as a .json file'>Save &amp; Download</button>
+						<button id='run-setup-load' title='Load settings from a .json file'>Load</button>
+						<input id="upload-run-setup" style="display: none;" type="file">
+						<h3>Mechanics</h3>
+						<div class='run-setup-group' id='run-setup-Mechanics'></div>
+						<p id='run-setup-note'></p>
 					</div>
 				</div>
 				<div id='stats' class='tab'>
@@ -308,7 +309,7 @@
 						<p id='avg-lifespan' title='Average ticks lived by the organisms that died in the last sample interval'>Avg. Lifespan at Death: </p>
 						<p id='burrower-count'>Organisms with Claw Cells: </p>
 						<p id='soil-health'>Average Soil Fertility: </p>
-						<label for="species-threshold" title='An offspring founds a new species once its body differs from its species founder by this many cells (added, removed or changed). Only affects new births.'>New species after</label>
+						<label for="species-threshold" title='An offspring founds a new species once its body differs from its species founder by this many cells (added, removed or changed), or when it switches between predator and non-predator. Only affects new births.'>New species after</label>
 						<input type="number" id="species-threshold" min="1" value=3 step="1"> mutations<br>
 						<label for="chart-option">Chart: </label>
 						<select name="chart-option" id="chart-option">
@@ -325,6 +326,15 @@
 							<option value="group-fitness">Fitness by Group</option>
 							<option value="group-lifespan">Lifespan at Death by Group</option>
 						</select>
+						<div id='claw-controls'>
+							<label for="claw-role" title='Which organisms the burrowing chart counts, to compare claws used for burrowing with claws carried for other reasons'>Claws of: </label>
+							<select name="claw-role" id="claw-role">
+								<option value="all">All organisms</option>
+								<option value="Plants">Plants</option>
+								<option value="Predators">Predators</option>
+								<option value="Prey">Prey</option>
+							</select>
+						</div>
 						<div id='group-controls'>
 							<label for="group-by">Group by: </label>
 							<select name="group-by" id="group-by">
@@ -343,8 +353,9 @@
 						<button id='export-timeseries' title='One row per sample: population, species, growth / birth / death rates, fitness, lifespan at death, cell averages, claw organisms, hidden organisms, burrows and soil'>Time Series</button>
 						<button id='export-species-log' title='One row per species per sample: population, births, deaths, growth rate, fitness, lifespan at death and burrows over time'>Per-Species Log</button>
 						<button id='export-species' title='One row per species (living and extinct): age, peak population, offspring, fitness, lifespan at death and body plan'>Species Summary</button>
-						<button id='export-groups' title='One row per lineage / role per sample: population, births, deaths, growth / birth / death rates, fitness, lifespan at death and burrows'>Groups Log</button>
+						<button id='export-groups' title='One row per lineage / role per sample: population, births, deaths, growth / birth / death rates, fitness, lifespan at death, burrows, organisms with claw cells, how many of those have ever burrowed, and how many are underground'>Groups Log</button>
 						<button id='export-events' title='Key moments: first burrow, claw cells appearing / disappearing, soil degrading, notable species establishing and going extinct'>Key Moments</button>
+						<button id='export-config' title='The configuration this run started with: Run Setup settings, grid size, organisms placed, soil fertile fraction and the evolution controls'>Run Config</button>
 						<button id='export-all'>All</button><br>
 						<label for="auto-save-logs" title='Downloads every CSV when all organisms die (before the world resets). Also downloads the per-species and groups logs as numbered parts whenever they reach 100,000 rows, then clears them from memory. When off, those logs stop growing at 100,000 rows.'>Auto-save logs to Downloads</label>
 						<input type="checkbox" id="auto-save-logs">

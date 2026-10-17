@@ -5,6 +5,7 @@ const Organism = require('../Organism/Organism');
 const CellStates = require('../Organism/Cell/CellStates');
 const EnvironmentController = require('../Controllers/EnvironmentController');
 const Hyperparams = require('../Hyperparameters.js');
+const EnvironmentParams = require('../EnvironmentParams.js');
 const FossilRecord = require('../Stats/FossilRecord');
 const WorldConfig = require('../WorldConfig');
 const SerializeHelper = require('../Utils/SerializeHelper');
@@ -20,7 +21,7 @@ class WorldEnvironment extends Environment{
         this.num_rows = Math.ceil(this.renderer.height / cell_size);
         this.num_cols = Math.ceil(this.renderer.width / cell_size);
         this.grid_map = new GridMap(this.num_cols, this.num_rows, cell_size);
-        this.controller.generateFertilityTerrain(Hyperparams.fertilityTerrainSeed, Hyperparams.fertilityPatchThreshold, Hyperparams.fertilityPatchResolution);
+        this.applySoil();
         this.organisms = [];
         this.walls = [];
         this.total_mutability = 0;
@@ -85,16 +86,44 @@ class WorldEnvironment extends Environment{
         }
     }
 
+    // the starting organisms from EnvironmentParams, placed deterministically by the placement seed
     OriginOfLife() {
-        for (const organism of RandomOrganismGenerator.generatePredatorPrey(this)) {
+        let placed = RandomOrganismGenerator.generateSeeded(this, (organism) => {
             this.addOrganism(organism);
             FossilRecord.addSpecies(organism, null);
+        });
+        this.recordRunConfig(placed);
+    }
+
+    // the soil layout from EnvironmentParams (seed, density and patch size). Fertility starts at each cell's cap
+    applySoil() {
+        this.controller.generateFertilityTerrain(EnvironmentParams.soilSeed, EnvironmentParams.soilPatchThreshold,
+            EnvironmentParams.soilPatchResolution);
+    }
+
+    // snapshot of the configuration this run started with, exported with the logs (run_config CSV). placed is how
+    // many organisms of each role actually fit, null when the world was cleared without any
+    recordRunConfig(placed) {
+        let cells = 0, fertile = 0;
+        for (let col of this.grid_map.grid) {
+            for (let cell of col) {
+                cells++;
+                if (cell.fertility_cap > 0) fertile++;
+            }
         }
-        // plants go in after the animals so they can avoid overlapping them
-        for (const plant of RandomOrganismGenerator.generatePlants(this)) {
-            this.addOrganism(plant);
-            FossilRecord.addSpecies(plant, null);
+        let config = Object.assign({}, EnvironmentParams.toJson(), {
+            grid_cols: this.num_cols,
+            grid_rows: this.num_rows,
+            cell_size: this.renderer.cell_size,
+            soil_fertile_frac: cells > 0 ? fertile / cells : 0,
+        });
+        for (let role of ['predators', 'prey', 'claw_prey', 'plants'])
+            config['placed_' + role] = placed ? placed[role] : 0;
+        for (let key in Hyperparams) {
+            if (typeof Hyperparams[key] !== 'object' && typeof Hyperparams[key] !== 'function')
+                config['hp_' + key] = Hyperparams[key];
         }
+        FossilRecord.setRunConfig(config);
     }
 
     addOrganism(organism) {
@@ -175,6 +204,7 @@ class WorldEnvironment extends Environment{
         }
         this.organisms = [];
         this.grid_map.fillGrid(CellStates.empty, !WorldConfig.clear_walls_on_reset);
+        this.applySoil(); // the soil settings may have changed, and a resized grid has lost its layout
         this.renderer.renderFullGrid(this.grid_map.grid);
         this.total_mutability = 0;
         this.total_ticks = 0;
@@ -182,6 +212,8 @@ class WorldEnvironment extends Environment{
         FossilRecord.clear_record();
         if (reset_life)
             this.OriginOfLife();
+        else
+            this.recordRunConfig(null);
         if (restart)
             this.engine.start(this.engine.last_fps);
         return true;
@@ -211,6 +243,7 @@ class WorldEnvironment extends Environment{
         }
         env.fossil_record = FossilRecord.serialize();
         env.controls = Hyperparams;
+        env.environment_params = EnvironmentParams.toJson();
         return env;
     }
 
@@ -253,8 +286,11 @@ class WorldEnvironment extends Environment{
             FossilRecord.addSpeciesObj(species[name]);
         FossilRecord.loadRaw(env.fossil_record);
         SerializeHelper.overwriteNonObjects(env, this);
-        if ($('#override-controls').is(':checked'))
+        if ($('#override-controls').is(':checked')) {
             Hyperparams.loadJsonObj(env.controls)
+            // older saves kept these settings in the controls, under their old names
+            EnvironmentParams.loadJsonObj(env.environment_params || env.controls);
+        }
         this.renderer.renderFullGrid(this.grid_map.grid);
     }
 

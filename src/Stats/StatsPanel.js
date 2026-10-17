@@ -19,19 +19,21 @@ const ChartSelections = [
     () => new FitnessChart(),
     () => new LifespanChart(),
     () => new GrowthChart(),
-    () => new BurrowSoilChart(),
+    (panel) => new BurrowSoilChart(panel),
     (panel) => new GroupChart(panel, 'pop'),
     (panel) => new GroupChart(panel, 'growth'),
     (panel) => new GroupChart(panel, 'fitness'),
     (panel) => new GroupChart(panel, 'lifespan'),
 ];
 const GROUP_CHARTS = [8, 9, 10, 11];
+const BURROW_CHART = 7;
 
 class StatsPanel {
     constructor(env, editor) {
         this.env = env;
         this.editor = editor;
         this.grouping = 'lineage';
+        this.claw_role = 'all'; // role filter for the burrowing chart
         this.followed_species = null;
         this.hidden_groups = new Set(); // legend entries the user has switched off
         this.download_queue = [];
@@ -43,6 +45,7 @@ class StatsPanel {
 
     setChart(selection=this.chart_selection) {
         $('#group-controls').css('display', GROUP_CHARTS.includes(selection) ? 'block' : 'none');
+        $('#claw-controls').css('display', selection === BURROW_CHART ? 'block' : 'none');
         this.chart_controller = ChartSelections[selection](this);
         this.chart_controller.setData();
         this.chart_controller.render();
@@ -73,6 +76,7 @@ class StatsPanel {
         $('#export-species').click(() => this.download('species_summary', FossilRecord.speciesSummaryCSV()));
         $('#export-groups').click(() => this.download('groups_log', FossilRecord.groupsLogCSV()));
         $('#export-events').click(() => this.download('key_moments', FossilRecord.eventsCSV()));
+        $('#export-config').click(() => this.download('run_config', FossilRecord.runConfigCSV()));
         $('#export-all').click(() => this.exportAll());
         $('#auto-save-logs').change(() => {
             if (this.autoSave() && FossilRecord.log_paused)
@@ -90,6 +94,10 @@ class StatsPanel {
             return true;
         };
 
+        $('#claw-role').change(() => {
+            this.claw_role = $('#claw-role').val();
+            this.setChart();
+        });
         $('#group-by').change(() => {
             this.grouping = $('#group-by').val();
             this.setChart();
@@ -146,6 +154,7 @@ class StatsPanel {
         this.download('groups_log' + part, FossilRecord.groupsLogCSV());
         this.download('species_summary', FossilRecord.speciesSummaryCSV());
         this.download('key_moments', FossilRecord.eventsCSV());
+        this.download('run_config', FossilRecord.runConfigCSV());
     }
 
     updateChart() {
@@ -176,7 +185,10 @@ class StatsPanel {
         let growth = FossilRecord.growth_rates[last];
         $('#growth-rate').text("Growth Rate (per Capita): " + (growth === null || growth === undefined ? "-" : Math.round(growth * 1000) / 1000));
         $('#avg-lifespan').text("Avg. Lifespan at Death: " + (lifespan === null || lifespan === undefined ? "-" : Math.round(lifespan) + " ticks"));
-        $('#burrower-count').text("Organisms with Claw Cells: " + FossilRecord.burrower_counts[last] + " (" + FossilRecord.hidden_counts[last] + " underground)");
+        let sample = FossilRecord.group_samples[last];
+        let claw_users = sample && sample.role ? Object.values(sample.role).reduce((sum, g) => sum + (g.ever_burrowed || 0), 0) : 0;
+        $('#burrower-count').text("Organisms with Claw Cells: " + FossilRecord.burrower_counts[last] + " (" + claw_users +
+            " have burrowed, " + FossilRecord.hidden_counts[last] + " underground)");
         let soil = FossilRecord.soil_means[last];
         $('#soil-health').text("Average Soil Fertility: " + (soil === null || soil === undefined ? "n/a" : Math.round(soil * 100) / 100));
         if (!$('#species-threshold').is(':focus')) // the threshold can change when a world is loaded
