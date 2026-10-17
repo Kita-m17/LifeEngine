@@ -2,11 +2,15 @@
 
 Usage:
     pip install matplotlib
-    python analysis/plot_metrics.py <folder with CSVs> [--out plots] [--smooth 5] [--follow SPECIES] [--top 8]
+    python analysis/plot_metrics.py [RUN ...] [--smooth 5] [--follow SPECIES] [--top 8] [--predator-lineage predator]
 
-The folder should hold the files from one run (timeseries, groups_log, species_log, key_moments). If there are
-several files of one kind (numbered parts from auto-save, or several exports), all of them are read and duplicate
-rows are dropped. Figures are saved as PNGs in --out.
+Each run is a folder under Observations/ holding the files from one run (timeseries, groups_log, species_log,
+species_summary, key_moments). RUN can be a folder name inside Observations/ or a path; with no RUN, every run
+folder in Observations/ is plotted. If there are several files of one kind (numbered parts from auto-save, or
+several exports), all of them are read and duplicate rows are dropped.
+
+Figures are saved as PNGs in <run>/plots/. With more than one run, a side-by-side comparison is saved to
+Observations/comparison.png.
 """
 import argparse
 import csv
@@ -18,13 +22,17 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+OBSERVATIONS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Observations")
+PALETTE = ["#1f77b4", "#d62728", "#2ca02c", "#ff7f0e", "#9467bd", "#8c564b", "#e377c2", "#17becf", "#bcbd22", "#7f7f7f"]
 ROLE_COLORS = {
     "Plants": "#2ca02c",
     "Predators": "#d62728",
     "Prey (burrowing)": "#8c564b",
     "Prey (non-burrowing)": "#1f77b4",
 }
+UNFLAGGED_KILLER_COLOR = "#9467bd"
 EVENT_COLORS = {"burrow_start": "#8c564b", "burrow_end": "#8c564b", "total_extinction": "black"}
+CELL_TYPES = ("producer", "mouth", "mover", "killer", "eye", "claw", "armor")
 
 
 def read_rows(folder, prefix):
@@ -243,25 +251,160 @@ def plot_followed(species_rows, events, out, root, window):
     plt.close(fig)
 
 
+def plot_killers(groups_rows, events, out, window, predator_lineages):
+    """Prey against the killers they can and can't see. Prey only flee or burrow from organisms flagged is_predator
+    (the predator lineage), but any organism with killer cells harms them, so killers that evolve in other lineages
+    go unnoticed. Unflagged killers = the Predators role minus the predator lineage; plants with killer cells are
+    classified as Plants, so they show up in the killer cell plot of traits.png instead."""
+    role_pop = group_series(groups_rows, "role", "population")
+    lineage_pop = group_series(groups_rows, "lineage", "population")
+    if "Predators" not in role_pop:
+        return
+    flagged = defaultdict(float)
+    for name in predator_lineages:
+        for x, y in zip(*lineage_pop.get(name, ([], []))):
+            flagged[x] += y or 0
+    xs, ys = role_pop["Predators"]
+    fig, ax = plt.subplots(figsize=(11, 4))
+    for name in ("Prey (burrowing)", "Prey (non-burrowing)"):
+        if name in role_pop:
+            ax.plot(*role_pop[name], color=ROLE_COLORS[name], label=name)
+    ax.plot(sorted(flagged), [flagged[x] for x in sorted(flagged)], color=ROLE_COLORS["Predators"],
+            label="Flagged predators (%s)" % ", ".join(predator_lineages))
+    ax.plot(xs, smooth([max((y or 0) - flagged[x], 0) for x, y in zip(xs, ys)], window), color=UNFLAGGED_KILLER_COLOR,
+            label="Unflagged killers (other lineages, prey can't see them)")
+    draw_events(ax, events)
+    ax.set_xlabel("Tick")
+    ax.set_ylabel("Organisms")
+    ax.set_title("Prey against the killers they can and can't see")
+    ax.legend(fontsize=8, loc="upper right")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "killers.png"), dpi=150)
+    plt.close(fig)
+
+
+def plot_traits(ts_rows, events, out, window):
+    """Population-average anatomy, body size, mutation rate and species count."""
+    if not ts_rows:
+        return
+    ticks = [int(r["tick"]) for r in ts_rows]
+    panels = [("avg_" + c, c.capitalize() + " cells per organism") for c in CELL_TYPES]
+    panels += [("avg_cells", "Body size (cells)"), ("avg_mutation_rate", "Mutation rate (%)"), ("species", "Living species")]
+    panels = [(field, label) for field, label in panels if field in ts_rows[0]]
+    fig, axes = plt.subplots(len(panels), 1, sharex=True, figsize=(11, 1.6 * len(panels) + 1))
+    for ax, (field, label) in zip(axes, panels):
+        ys = [num(r[field]) for r in ts_rows]
+        ax.plot(ticks, ys if field == "species" else smooth(ys, window), color=PALETTE[0])
+        ax.set_ylabel(label, fontsize=8)
+        draw_events(ax, events)
+    axes[-1].set_xlabel("Tick")
+    axes[0].set_title("Population-average anatomy" + (" (smoothed over %d samples)" % window if window > 1 else ""))
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "traits.png"), dpi=150)
+    plt.close(fig)
+
+
+def plot_species_timeline(summary_rows, out):
+    """One bar per species from its first to last tick, coloured by founding lineage."""
+    if not summary_rows:
+        return
+    rows = sorted(summary_rows, key=lambda r: (r["lineage"], int(r["start_tick"])))
+    lineages = list(dict.fromkeys(r["lineage"] for r in rows))
+    colors = {name: PALETTE[i % len(PALETTE)] for i, name in enumerate(lineages)}
+    fig, ax = plt.subplots(figsize=(11, max(4, 0.09 * len(rows))))
+    for i, r in enumerate(rows):
+        start = int(r["start_tick"])
+        ax.plot([start, start + int(r["age"])], [i, i], color=colors[r["lineage"]], linewidth=2.2, solid_capstyle="round")
+    ax.set_yticks([])
+    ax.set_xlabel("Tick")
+    ax.set_title("Species lifespans (%d species), coloured by founding lineage" % len(rows))
+    ax.legend(handles=[plt.Line2D([], [], color=colors[n], linewidth=2.2, label=n) for n in lineages], fontsize=8, loc="lower right")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "species_timeline.png"), dpi=150)
+    plt.close(fig)
+
+
+def plot_comparison(runs, path, window):
+    """The same metrics for every run on shared panels, one colour per run. Roles are compared rather than lineages
+    because lineage names depend on each run's starting organisms."""
+    panels = [
+        ("role", "Prey (burrowing)", "Prey (burrowing)"),
+        ("role", "Prey (non-burrowing)", "Prey (non-burrowing)"),
+        ("role", "Predators", "Predators"),
+        ("role", "Plants", "Plants"),
+        ("ts", "burrows", "Burrows per sample"),
+        ("ts", "soil_mean", "Avg. soil fertility"),
+        ("ts", "avg_killer", "Killer cells per organism"),
+        ("ts", "avg_mutation_rate", "Mutation rate (%)"),
+    ]
+    fig, axes = plt.subplots(len(panels), 1, sharex=True, figsize=(11, 2 * len(panels) + 1))
+    for i, (name, run) in enumerate(runs):
+        color = PALETTE[i % len(PALETTE)]
+        role_pop = group_series(run["groups"], "role", "population")
+        ticks = [int(r["tick"]) for r in run["ts"]]
+        for ax, (source, field, label) in zip(axes, panels):
+            if source == "role" and field in role_pop:
+                ax.plot(*role_pop[field], color=color, label=name)
+            elif source == "ts" and run["ts"] and field in run["ts"][0]:
+                ax.plot(ticks, smooth([num(r[field]) for r in run["ts"]], window), color=color, label=name)
+            ax.set_ylabel(label, fontsize=8)
+    axes[0].legend(fontsize=8, loc="upper right")
+    axes[0].set_title("Run comparison")
+    axes[-1].set_xlabel("Tick")
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
+def find_runs(names):
+    """Run folders named on the command line (inside Observations/ or as paths), or every run in Observations/."""
+    if not names:
+        return sorted({os.path.dirname(p) for p in glob.glob(os.path.join(OBSERVATIONS, "*", "timeseries*.csv"))})
+    runs = []
+    for name in names:
+        folder = name if os.path.isdir(name) else os.path.join(OBSERVATIONS, name)
+        if not os.path.isdir(folder):
+            raise SystemExit("No run folder '%s' (looked in %s)" % (name, OBSERVATIONS))
+        runs.append(os.path.abspath(folder))
+    return list(dict.fromkeys(runs))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("folder")
-    parser.add_argument("--out", default="plots")
-    parser.add_argument("--smooth", type=int, default=5, help="samples to average growth rate, fitness and lifespan at death over (1 = off)")
+    parser.add_argument("runs", nargs="*", help="run folders (names inside Observations/ or paths); default: all of them")
+    parser.add_argument("--smooth", type=int, default=5, help="samples to average growth rate, fitness, lifespan at death and traits over (1 = off)")
     parser.add_argument("--follow", help="species name to plot with all its descendant species")
     parser.add_argument("--top", type=int, default=8, help="max lineages to draw")
+    parser.add_argument("--predator-lineage", action="append",
+                        help="lineage(s) flagged is_predator, used to separate unflagged killers (default: predator)")
     args = parser.parse_args()
+    predator_lineages = args.predator_lineage or ["predator"]
 
-    os.makedirs(args.out, exist_ok=True)
-    ts_rows = read_rows(args.folder, "timeseries")
-    groups_rows = read_rows(args.folder, "groups_log")
-    events = read_rows(args.folder, "key_moments")
+    folders = find_runs(args.runs)
+    if not folders:
+        raise SystemExit("No runs found in " + OBSERVATIONS)
+    runs = []
+    for folder in folders:
+        out = os.path.join(folder, "plots")
+        os.makedirs(out, exist_ok=True)
+        ts_rows = sorted(read_rows(folder, "timeseries"), key=lambda r: int(r["tick"]))
+        groups_rows = read_rows(folder, "groups_log")
+        events = read_rows(folder, "key_moments")
 
-    plot_groups(groups_rows, events, args.out, args.smooth, args.top)
-    plot_burrow_soil(ts_rows, groups_rows, events, args.out)
-    if args.follow:
-        plot_followed(read_rows(args.folder, "species_log"), events, args.out, args.follow, args.smooth)
-    print("Saved plots to", os.path.abspath(args.out))
+        plot_groups(groups_rows, events, out, args.smooth, args.top)
+        plot_burrow_soil(ts_rows, groups_rows, events, out)
+        plot_killers(groups_rows, events, out, args.smooth, predator_lineages)
+        plot_traits(ts_rows, events, out, args.smooth)
+        plot_species_timeline(read_rows(folder, "species_summary"), out)
+        if args.follow:
+            plot_followed(read_rows(folder, "species_log"), events, out, args.follow, args.smooth)
+        print("Saved plots to", out)
+        runs.append((os.path.basename(folder), {"ts": ts_rows, "groups": groups_rows}))
+
+    if len(runs) > 1:
+        path = os.path.join(OBSERVATIONS, "comparison.png")
+        plot_comparison(runs, path, args.smooth)
+        print("Saved comparison to", path)
 
 
 if __name__ == "__main__":
