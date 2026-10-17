@@ -30,7 +30,7 @@ ROLE_COLORS = {
     "Prey (burrowing)": "#8c564b",
     "Prey (non-burrowing)": "#1f77b4",
 }
-UNFLAGGED_KILLER_COLOR = "#9467bd"
+EVOLVED_PREDATOR_COLOR = "#9467bd"
 EVENT_COLORS = {"burrow_start": "#8c564b", "burrow_end": "#8c564b", "total_extinction": "black"}
 CELL_TYPES = ("producer", "mouth", "mover", "killer", "eye", "claw", "armor")
 
@@ -251,35 +251,37 @@ def plot_followed(species_rows, events, out, root, window):
     plt.close(fig)
 
 
-def plot_killers(groups_rows, events, out, window, predator_lineages):
-    """Prey against the killers they can and can't see. Prey only flee or burrow from organisms flagged is_predator
-    (the predator lineage), but any organism with killer cells harms them, so killers that evolve in other lineages
-    go unnoticed. Unflagged killers = the Predators role minus the predator lineage; plants with killer cells are
-    classified as Plants, so they show up in the killer cell plot of traits.png instead."""
+def plot_predators(groups_rows, events, out, window, predator_lineages):
+    """Prey against the seeded predator lineage and the predators that evolved in other lineages. Evolved predators
+    are the Predators role minus the seeded lineage. Organisms are now tagged is_predator from their anatomy, so most
+    evolved predators are tagged and visible to prey; runs from before that change had none tagged, so there this line
+    is killers prey couldn't see. Either way the role is classified from anatomy, so it also counts mobile producers
+    with killer cells, which stay untagged. Plants with killer cells are classified as Plants and show up in the killer
+    cell plot of traits.png instead."""
     role_pop = group_series(groups_rows, "role", "population")
     lineage_pop = group_series(groups_rows, "lineage", "population")
     if "Predators" not in role_pop:
         return
-    flagged = defaultdict(float)
+    seeded = defaultdict(float)
     for name in predator_lineages:
         for x, y in zip(*lineage_pop.get(name, ([], []))):
-            flagged[x] += y or 0
+            seeded[x] += y or 0
     xs, ys = role_pop["Predators"]
     fig, ax = plt.subplots(figsize=(11, 4))
     for name in ("Prey (burrowing)", "Prey (non-burrowing)"):
         if name in role_pop:
             ax.plot(*role_pop[name], color=ROLE_COLORS[name], label=name)
-    ax.plot(sorted(flagged), [flagged[x] for x in sorted(flagged)], color=ROLE_COLORS["Predators"],
-            label="Flagged predators (%s)" % ", ".join(predator_lineages))
-    ax.plot(xs, smooth([max((y or 0) - flagged[x], 0) for x, y in zip(xs, ys)], window), color=UNFLAGGED_KILLER_COLOR,
-            label="Unflagged killers (other lineages, prey can't see them)")
+    ax.plot(sorted(seeded), [seeded[x] for x in sorted(seeded)], color=ROLE_COLORS["Predators"],
+            label="Seeded predators (%s)" % ", ".join(predator_lineages))
+    ax.plot(xs, smooth([max((y or 0) - seeded[x], 0) for x, y in zip(xs, ys)], window), color=EVOLVED_PREDATOR_COLOR,
+            label="Evolved predators (other lineages)")
     draw_events(ax, events)
     ax.set_xlabel("Tick")
     ax.set_ylabel("Organisms")
-    ax.set_title("Prey against the killers they can and can't see")
+    ax.set_title("Prey against seeded and evolved predators")
     ax.legend(fontsize=8, loc="upper right")
     fig.tight_layout()
-    fig.savefig(os.path.join(out, "killers.png"), dpi=150)
+    fig.savefig(os.path.join(out, "predators.png"), dpi=150)
     plt.close(fig)
 
 
@@ -376,7 +378,7 @@ def main():
     parser.add_argument("--follow", help="species name to plot with all its descendant species")
     parser.add_argument("--top", type=int, default=8, help="max lineages to draw")
     parser.add_argument("--predator-lineage", action="append",
-                        help="lineage(s) flagged is_predator, used to separate unflagged killers (default: predator)")
+                        help="seeded predator lineage(s), used to separate evolved predators (default: predator)")
     args = parser.parse_args()
     predator_lineages = args.predator_lineage or ["predator"]
 
@@ -393,7 +395,7 @@ def main():
 
         plot_groups(groups_rows, events, out, args.smooth, args.top)
         plot_burrow_soil(ts_rows, groups_rows, events, out)
-        plot_killers(groups_rows, events, out, args.smooth, predator_lineages)
+        plot_predators(groups_rows, events, out, args.smooth, predator_lineages)
         plot_traits(ts_rows, events, out, args.smooth)
         plot_species_timeline(read_rows(folder, "species_summary"), out)
         if args.follow:
