@@ -1,0 +1,103 @@
+{
+  "name": "ablation_sweep",
+  "description": "Each of the plant regrowth branch's other changes undone on its own (run_sim.js --ablate), at the evo_suicide settings with plant regrowth on. The last two conditions undo everything, regrowth included, and should match the results from before the branch.",
+  "ticks": 100000,
+  "every": 1000,
+  "seeds": {
+    "from": 1,
+    "to": 20
+  },
+  "base": {
+    "predatorLifespanMultiplier": 2,
+    "burrowOnlyWhenClose": false,
+    "clawPredatorChance": 1,
+    "clawCellsFree": false,
+    "numPredators": 10,
+    "numPrey": 20,
+    "numClawPrey": 0,
+    "numPlants": 39
+  },
+  "conditions": [
+    {
+      "name": "soil cost 10, no predator armour",
+      "set": {
+        "hideFertilityCost": 10
+      },
+      "ablate": [
+        "no_predator_armour"
+      ]
+    },
+    {
+      "name": "no burrowing, no predator armour",
+      "set": {
+        "minBurrowFertility": 1000000000.0
+      },
+      "ablate": [
+        "no_predator_armour"
+      ]
+    },
+    {
+      "name": "soil cost 10, plants leave food",
+      "set": {
+        "hideFertilityCost": 10
+      },
+      "ablate": [
+        "plants_leave_food"
+      ]
+    },
+    {
+      "name": "no burrowing, plants leave food",
+      "set": {
+        "minBurrowFertility": 1000000000.0
+      },
+      "ablate": [
+        "plants_leave_food"
+      ]
+    },
+    {
+      "name": "soil cost 10, claws allowed on plants",
+      "set": {
+        "hideFertilityCost": 10
+      },
+      "ablate": [
+        "claws_on_plants"
+      ]
+    },
+    {
+      "name": "soil cost 10, everything undone",
+      "set": {
+        "hideFertilityCost": 10,
+        "plantRegrowthRate": 0
+      },
+      "ablate": [
+        "no_predator_armour",
+        "plants_leave_food",
+        "claws_on_plants"
+      ]
+    },
+    {
+      "name": "no burrowing, everything undone",
+      "set": {
+        "minBurrowFertility": 1000000000.0,
+        "plantRegrowthRate": 0
+      },
+      "ablate": [
+        "no_predator_armour",
+        "plants_leave_food",
+        "claws_on_plants"
+      ]
+    },
+    {
+      "name": "harmless burrowing, everything undone",
+      "set": {
+        "hideFertilityCost": 0,
+        "plantRegrowthRate": 0
+      },
+      "ablate": [
+        "no_predator_armour",
+        "plants_leave_food",
+        "claws_on_plants"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "name": "jenna_config",
+  "description": "Jenna's browser run (run_config_tick73074.csv): every setting from her export, on her 306 x 140 grid, with harmless burrowing, no burrowing and no plant regrowth for comparison.",
+  "ticks": 100000,
+  "every": 1000,
+  "seeds": {
+    "from": 1,
+    "to": 20
+  },
+  "grid": {
+    "cols": 306,
+    "rows": 140,
+    "cell": 5
+  },
+  "base": {
+    "soilSeed": 42,
+    "soilPatchThreshold": 0,
+    "soilPatchResolution": 20,
+    "soilRegenRate": 0.01,
+    "soilRegenAmount": 1,
+    "minPlantFertility": 7,
+    "plantRegrowthRate": 1,
+    "numPredators": 10,
+    "numPrey": 10,
+    "numClawPrey": 10,
+    "numPlants": 39,
+    "clawPredatorChance": 0.5,
+    "clawCellsFree": true,
+    "hibernateWhileHidden": true,
+    "stayHiddenNearPredator": true,
+    "stayHiddenRange": 10,
+    "burrowOnlyWhenClose": false,
+    "burrowTriggerRange": 50,
+    "lifespanMultiplier": 150,
+    "predatorLifespanMultiplier": 2,
+    "predatorMoveInterval": 3,
+    "burrowerMoveInterval": 2,
+    "foodProdProb": 5,
+    "useGlobalMutability": false,
+    "globalMutability": 5,
+    "addProb": 25,
+    "changeProb": 25,
+    "removeProb": 25,
+    "brainMutationChance": 25,
+    "mutationSymmetryChance": 10,
+    "rotationEnabled": true,
+    "foodBlocksReproduction": true,
+    "moversCanProduce": false,
+    "instaKill": false,
+    "dontKillSameSpecies": false,
+    "lookRange": 30,
+    "seeThroughSelf": false,
+    "evolveIndependentEyeDecisions": true,
+    "foodDropProb": 0,
+    "extraMoverFoodCost": 0,
+    "hideDuration": 200,
+    "hideFertilityCost": 10,
+    "minBurrowFertility": 1,
+    "maxOrganisms": -1,
+    "maxFertility": 10
+  },
+  "conditions": [
+    {
+      "name": "her settings",
+      "set": {}
+    },
+    {
+      "name": "her settings, harmless burrowing",
+      "set": {
+        "hideFertilityCost": 0
+      }
+    },
+    {
+      "name": "her settings, no burrowing",
+      "set": {
+        "minBurrowFertility": 1000000000.0
+      }
+    },
+    {
+      "name": "her settings, no plant regrowth",
+      "set": {
+        "plantRegrowthRate": 0
+      }
+    }
+  ]
+}

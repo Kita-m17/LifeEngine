@@ -1,0 +1,9 @@
+condition,runs,prey_never_died_out,claws_took_over,"claws took over, then all prey died out","claws took over, then were lost",claws took over and persisted,claws never took over,"prey died out, claws never took over",median_takeover_tick,median_collapse_tick,median_lowest_soil,median_lowest_plants
+"no burrowing, everything undone",20,19,1,0,1,0,18,1,49000.0,,100.0,340.5
+"soil cost 10, no predator armour",20,20,13,0,3,10,7,0,35000.0,,70.65,313.0
+"no burrowing, no predator armour",20,20,1,0,1,0,19,0,22000.0,,100.0,687.5
+"soil cost 10, plants leave food",20,18,17,0,2,15,1,2,25000.0,,60.150000000000006,29.5
+"no burrowing, plants leave food",20,19,2,0,2,0,17,1,61000.0,,100.0,375.5
+"soil cost 10, claws allowed on plants",20,20,11,0,3,8,9,0,41000.0,,81.15,457.5
+"soil cost 10, everything undone",20,11,18,9,6,3,2,0,28000.0,56000.0,69.4,21.5
+"harmless burrowing, everything undone",20,20,18,0,1,17,2,0,19000.0,,100.0,435.0

@@ -1,0 +1,5 @@
+condition,runs,prey_never_died_out,claws_took_over,"claws took over, then all prey died out","claws took over, then were lost",claws took over and persisted,claws never took over,"prey died out, claws never took over",median_takeover_tick,median_collapse_tick,median_lowest_soil,median_lowest_plants
+"her settings, no burrowing",20,20,0,0,0,0,20,0,,,100.0,535.5
+her settings,20,16,16,4,9,3,4,0,30500.0,80500.0,66.4,94.0
+"her settings, harmless burrowing",20,20,15,0,0,15,5,0,26000.0,,100.0,551.0
+"her settings, no plant regrowth",20,10,15,10,2,3,5,0,27000.0,51000.0,58.0,2.0

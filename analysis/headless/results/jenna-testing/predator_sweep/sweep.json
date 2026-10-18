@@ -1,0 +1,52 @@
+{
+  "name": "predator_sweep",
+  "description": "Where does evolutionary suicide happen? The evo_suicide conditions at other predator lifespan multipliers (2 is in evo_suicide). Plot both folders together to compare.",
+  "ticks": 100000,
+  "every": 1000,
+  "seeds": {
+    "from": 1,
+    "to": 8
+  },
+  "base": {
+    "burrowOnlyWhenClose": false,
+    "clawPredatorChance": 1,
+    "clawCellsFree": false,
+    "numPredators": 10,
+    "numPrey": 20,
+    "numClawPrey": 0,
+    "numPlants": 39
+  },
+  "vary": {
+    "predatorLifespanMultiplier": [
+      3,
+      1.5,
+      1
+    ]
+  },
+  "conditions": [
+    {
+      "name": "no burrowing",
+      "set": {
+        "minBurrowFertility": 1000000000
+      }
+    },
+    {
+      "name": "harmless burrowing",
+      "set": {
+        "hideFertilityCost": 0
+      }
+    },
+    {
+      "name": "soil cost 3",
+      "set": {
+        "hideFertilityCost": 3
+      }
+    },
+    {
+      "name": "soil cost 10",
+      "set": {
+        "hideFertilityCost": 10
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+hideDuration,condition,runs,prey_never_died_out,claws_took_over,"claws took over, then all prey died out","claws took over, then were lost",claws took over and persisted,claws never took over,"prey died out, claws never took over",median_takeover_tick,median_collapse_tick,median_lowest_soil,median_lowest_plants
+100,no burrowing,20,20,0,0,0,0,20,0,,,100.0,711.5
+100,harmless burrowing,20,20,12,0,6,6,8,0,27500.0,,100.0,696.0
+100,soil cost 3,20,20,12,0,4,8,8,0,31500.0,,93.15,602.5
+100,soil cost 5,20,20,13,0,1,12,7,0,28000.0,,81.5,548.5
+100,soil cost 10,20,20,13,0,1,12,7,0,42000.0,,72.6,349.5
+30,harmless burrowing,20,20,2,0,2,0,18,0,35000.0,,100.0,705.5
+30,soil cost 3,20,20,2,0,2,0,18,0,8000.0,,99.15,699.0
+30,soil cost 5,20,20,0,0,0,0,20,0,,,98.65,708.0
+30,soil cost 10,20,20,0,0,0,0,20,0,,,98.35,686.5

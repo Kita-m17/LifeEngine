@@ -1,0 +1,52 @@
+{
+  "name": "evo_suicide",
+  "description": "Does burrowing that damages the soil drive the burrowers extinct? Claws are not seeded: they evolve by mutation. Compared with harmless burrowing (same benefit, no soil damage) and with burrowing switched off (claws can evolve but do nothing).",
+  "ticks": 100000,
+  "every": 1000,
+  "seeds": {
+    "from": 1,
+    "to": 20
+  },
+  "base": {
+    "predatorLifespanMultiplier": 2,
+    "burrowOnlyWhenClose": false,
+    "clawPredatorChance": 1,
+    "clawCellsFree": false,
+    "numPredators": 10,
+    "numPrey": 20,
+    "numClawPrey": 0,
+    "numPlants": 39
+  },
+  "conditions": [
+    {
+      "name": "no burrowing",
+      "set": {
+        "minBurrowFertility": 1000000000
+      }
+    },
+    {
+      "name": "harmless burrowing",
+      "set": {
+        "hideFertilityCost": 0
+      }
+    },
+    {
+      "name": "soil cost 3",
+      "set": {
+        "hideFertilityCost": 3
+      }
+    },
+    {
+      "name": "soil cost 5",
+      "set": {
+        "hideFertilityCost": 5
+      }
+    },
+    {
+      "name": "soil cost 10",
+      "set": {
+        "hideFertilityCost": 10
+      }
+    }
+  ]
+}

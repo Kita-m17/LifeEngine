@@ -1,0 +1,47 @@
+{
+  "name": "regrowth_sweep",
+  "description": "Plant regrowth (plantRegrowthRate, % chance per tick of seeding a plant on fertile soil) at the evo_suicide settings. 1% is the default and is in evo_suicide.",
+  "ticks": 100000,
+  "every": 1000,
+  "seeds": {
+    "from": 1,
+    "to": 20
+  },
+  "base": {
+    "predatorLifespanMultiplier": 2,
+    "burrowOnlyWhenClose": false,
+    "clawPredatorChance": 1,
+    "clawCellsFree": false,
+    "numPredators": 10,
+    "numPrey": 20,
+    "numClawPrey": 0,
+    "numPlants": 39
+  },
+  "vary": {
+    "plantRegrowthRate": [
+      0,
+      0.25,
+      3
+    ]
+  },
+  "conditions": [
+    {
+      "name": "no burrowing",
+      "set": {
+        "minBurrowFertility": 1000000000
+      }
+    },
+    {
+      "name": "harmless burrowing",
+      "set": {
+        "hideFertilityCost": 0
+      }
+    },
+    {
+      "name": "soil cost 10",
+      "set": {
+        "hideFertilityCost": 10
+      }
+    }
+  ]
+}

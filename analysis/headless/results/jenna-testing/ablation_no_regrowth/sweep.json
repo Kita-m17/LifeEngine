@@ -1,0 +1,45 @@
+{
+  "name": "ablation_no_regrowth",
+  "description": "Each of the plant regrowth branch's other changes undone on its own, with plant regrowth switched off, at the evo_suicide settings. Compare with soil cost 10 at regrowth 0 (regrowth_sweep) and with everything undone (ablation_sweep).",
+  "ticks": 100000,
+  "every": 1000,
+  "seeds": {
+    "from": 1,
+    "to": 20
+  },
+  "base": {
+    "predatorLifespanMultiplier": 2,
+    "burrowOnlyWhenClose": false,
+    "clawPredatorChance": 1,
+    "clawCellsFree": false,
+    "numPredators": 10,
+    "numPrey": 20,
+    "numClawPrey": 0,
+    "numPlants": 39,
+    "plantRegrowthRate": 0,
+    "hideFertilityCost": 10
+  },
+  "conditions": [
+    {
+      "name": "no regrowth, no predator armour",
+      "set": {},
+      "ablate": [
+        "no_predator_armour"
+      ]
+    },
+    {
+      "name": "no regrowth, plants leave food",
+      "set": {},
+      "ablate": [
+        "plants_leave_food"
+      ]
+    },
+    {
+      "name": "no regrowth, claws allowed on plants",
+      "set": {},
+      "ablate": [
+        "claws_on_plants"
+      ]
+    }
+  ]
+}

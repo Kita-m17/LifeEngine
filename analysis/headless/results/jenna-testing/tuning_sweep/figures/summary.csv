@@ -1,0 +1,10 @@
+condition,runs,prey_never_died_out,claws_took_over,"claws took over, then all prey died out","claws took over, then were lost",claws took over and persisted,claws never took over,"prey died out, claws never took over",median_takeover_tick,median_collapse_tick,median_lowest_soil,median_lowest_plants
+current settings,20,20,12,0,2,10,8,0,52000.0,,78.9,442.0
+hide duration 150,20,20,15,0,2,13,5,0,23000.0,,65.8,139.5
+soil cost 7,20,20,12,0,2,10,8,0,16000.0,,75.75,443.5
+soil regrowth 0.025,20,20,11,0,3,8,9,0,21000.0,,69.65,277.0
+stay hidden range 3,20,20,6,0,4,2,14,0,34000.0,,93.6,654.0
+stay hidden range 10,20,20,17,0,2,15,3,0,38000.0,,60.65,93.5
+"harmless, hide duration 150",20,20,14,0,0,14,6,0,13000.0,,100.0,661.0
+"harmless, stay hidden range 3",20,20,8,0,4,4,12,0,11500.0,,100.0,702.0
+"harmless, stay hidden range 10",20,20,18,0,4,14,2,0,34500.0,,100.0,686.5

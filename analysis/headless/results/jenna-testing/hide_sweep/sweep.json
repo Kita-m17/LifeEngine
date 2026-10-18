@@ -1,0 +1,51 @@
+{
+  "name": "hide_sweep",
+  "description": "Shorter hides (30 ticks instead of 100) with the evo_suicide soil costs. Hide duration 100 is in evo_suicide: plot both folders with --by hideDuration to compare.",
+  "ticks": 100000,
+  "every": 1000,
+  "seeds": {
+    "from": 1,
+    "to": 20
+  },
+  "base": {
+    "predatorLifespanMultiplier": 2,
+    "burrowOnlyWhenClose": false,
+    "clawPredatorChance": 1,
+    "clawCellsFree": false,
+    "numPredators": 10,
+    "numPrey": 20,
+    "numClawPrey": 0,
+    "numPlants": 39
+  },
+  "vary": {
+    "hideDuration": [
+      30
+    ]
+  },
+  "conditions": [
+    {
+      "name": "harmless burrowing",
+      "set": {
+        "hideFertilityCost": 0
+      }
+    },
+    {
+      "name": "soil cost 3",
+      "set": {
+        "hideFertilityCost": 3
+      }
+    },
+    {
+      "name": "soil cost 5",
+      "set": {
+        "hideFertilityCost": 5
+      }
+    },
+    {
+      "name": "soil cost 10",
+      "set": {
+        "hideFertilityCost": 10
+      }
+    }
+  ]
+}
