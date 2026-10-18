@@ -5,3 +5,8 @@ dist/js/bundle.js.LICENSE.txt
 METRICS.md
 
 Observations/*
+
+# headless experiments: keep the figures and summary tables, not the raw results of every run
+# (rerun the sweeps in analysis/headless/sweeps to regenerate them)
+analysis/headless/results/*/*.json
+__pycache__/

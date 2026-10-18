@@ -40,9 +40,10 @@ const FIELDS = [
     {key: 'numPlants', group: 'Organisms', type: 'int', default: 39, min: 0, step: 1, applies: 'reset', label: 'Plants'},
 
     // mechanics
-    {key: 'clawPredatorChance', group: 'Mechanics', type: 'float', default: 0.5, min: 0, max: 1, step: 0.1, applies: 'live',
+    // 1 by default: a claw doesn't let an organism with killer cells stay prey (and keep the killer cells as a defence)
+    {key: 'clawPredatorChance', group: 'Mechanics', type: 'float', default: 1, min: 0, max: 1, step: 0.1, applies: 'live',
         label: 'Clawed killer becomes predator (chance)',
-        title: 'When a clawed organism gains its first killer cell, the chance it becomes a predator instead of staying prey. 0.5 is the coin flip; 1 turns the coin flip off (clawed organisms become predators like any other); 0 keeps them prey.'},
+        title: 'When a clawed organism gains its first killer cell, the chance it becomes a predator instead of staying prey. 1 treats clawed organisms like any other (every organism that gains a killer cell becomes a predator); 0.5 is a coin flip; 0 keeps them prey.'},
     // off by default: free claw cells also benefit organisms that can't burrow (plants, predators), so claws spread for
     // reasons that have nothing to do with burrowing
     {key: 'clawCellsFree', group: 'Mechanics', type: 'bool', default: false, applies: 'live', label: 'Claw cells are free',
@@ -53,7 +54,8 @@ const FIELDS = [
         title: 'A hidden organism stays underground while a predator is within the range below, for up to another hide duration.'},
     {key: 'stayHiddenRange', group: 'Mechanics', type: 'int', default: 6, min: 1, max: 50, step: 1, applies: 'live', label: 'Stay hidden range',
         title: 'How close (in cells) a predator has to be to keep a hidden organism underground.'},
-    {key: 'burrowOnlyWhenClose', group: 'Mechanics', type: 'bool', default: true, applies: 'live', label: 'Only burrow when predator is close',
+    // off by default: burrowing at every predator sighting keeps the soil damage going, which the evolutionary suicide needs
+    {key: 'burrowOnlyWhenClose', group: 'Mechanics', type: 'bool', default: false, applies: 'live', label: 'Only burrow when predator is close',
         title: 'Prey with a claw only burrow when the predator they see is within the range below. Further away, they run instead.'},
     {key: 'burrowTriggerRange', group: 'Mechanics', type: 'int', default: 8, min: 1, max: 50, step: 1, applies: 'live', label: 'Burrow trigger range',
         title: 'How close (in cells) a seen predator has to be before prey with a claw burrow.'},

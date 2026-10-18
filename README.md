@@ -31,6 +31,19 @@ To load custom creations (found in `/dist/assets`), you must have a simple web s
 - Watch mode (dev mode that auto-builds when you save a file): `npm run build-watch`
 - Dev mode (better error messages): `npm run build-dev` 
 
+### Headless experiments (evolutionary suicide)
+`analysis/headless/` runs the simulation in Node without the browser, using the same `src/` code, so batches of long runs finish in minutes instead of hours.
+
+- `node analysis/headless/run_sim.js --ticks 100000 --set '{"hideFertilityCost":0}' --out run.json` runs one simulation and saves the populations and soil every 1000 ticks. `--set` takes any Run Setup or Evolution Controls setting by its name in `src/EnvironmentParams.js` or `src/Hyperparameters.js`.
+- `node analysis/headless/sweep.js analysis/headless/sweeps/evo_suicide.json` runs every setup in a sweep file for several placement seeds, one run per CPU core at a time, and saves one JSON per run in `analysis/headless/results/<sweep name>/`. If a sweep is interrupted, run the same command again to finish it. Runs that already have a result are skipped.
+- `python analysis/headless/plot_evo_suicide.py analysis/headless/results/evo_suicide analysis/headless/results/predator_sweep` draws the figures into `analysis/headless/results/evo_suicide/figures/` (needs `pip install matplotlib numpy`). The docstring at the top of the script explains how each run is classified and what each figure shows.
+
+The two sweep files:
+- `evo_suicide` compares five setups, 20 runs each: burrowing switched off, harmless burrowing, and burrowing that costs the soil 3, 5 or 10.
+- `predator_sweep` repeats the four setups at other predator lifespan multipliers, to show where evolutionary suicide happens.
+- `hide_sweep` repeats the burrowing setups with 30-tick hides instead of 100. To compare, plot it together with `evo_suicide`: `python analysis/headless/plot_evo_suicide.py analysis/headless/results/hide_sweep analysis/headless/results/evo_suicide --by hideDuration --focus 30 --damage "soil cost 5"`.
+- `tuning_sweep` starts from the current settings and changes one thing at a time: hide duration 150, soil cost 7, soil regrowth 0.025, and stay hidden range 3 or 10. It includes harmless-burrowing controls for the changes that alter what the claw is worth.
+
 
 # How the Simulation Works
 ## The Environment
@@ -58,7 +71,7 @@ When an organism dies, every cell in the grid that was occupied by a cell in its
 Their lifespan is calculated by multiplying the number of cells they have by the hyperparameter `Lifespan Multiplier`. Predators additionally multiply that lifespan by the `Predator Lifespan Multiplier` hyperparameter, which defaults to 2; other organisms survive for the calculated number of ticks unless killed by another organism.
 When touched by a killer cell, an organism will take damage. Once it has taken as much damage as it has cells in its body, it will die. If the hyperparameter `One touch kill` is on, an organism will immediatly die when touched by a killer cell.
 Predators cannot eat food or kill non-prey organisms. Killing prey gives a predator one food unit per prey body cell, matching the food yield of eating food from a plant of the same size. Predators move according to the `Predator Movement Interval` hyperparameter (default 3 updates), chase prey they see through their normal directional eyes, and keep their heading longer after prey leave sight. Prey take at most one movement step per update, chase visible food when no predator is nearby, and retreat from visible predators or hide if they can burrow. Burrowing prey move according to the `Burrower Movement Interval` hyperparameter (default 3 updates).
-Organisms with a killer cell and no producer cell are tagged as predators. When a clawed organism first develops a killer cell, it has a 50% chance to become a predator and a 50% chance to remain prey (the `Clawed killer becomes predator` chance in Run Setup). Every other organism that is not a plant (a producer that cannot move) is tagged as prey, so organisms that evolve to move, or predators that lose their killer cells, can be hunted. An offspring that switches between predator and non-predator always founds a new species, whatever its body.
+Organisms with a killer cell and no producer cell are tagged as predators, including organisms with a claw. Lowering the `Clawed killer becomes predator` chance in Run Setup below 1 lets a clawed organism that first develops a killer cell stay prey instead (0.5 gives a coin flip). Every other organism that is not a plant (a producer that cannot move) is tagged as prey, so organisms that evolve to move, or predators that lose their killer cells, can be hunted. An offspring that switches between predator and non-predator always founds a new species, whatever its body.
 
 ## Run Setup
 Each run's starting configuration (the soil layout and the seeded organisms), plus mechanics that can be isolated between runs, are in `src/EnvironmentParams.js`. There are two ways to change them:
@@ -79,15 +92,15 @@ Settings marked *reset* only take effect when the world resets, because the soil
 | Min plant fertility | 7 | live | The average soil fertility needed under a plant (a producer that cannot move) for it to be born or placed there. |
 | Placement seed | 1 | reset | Fixes where the starting organisms are placed. Change it to get replicates of the same configuration. |
 | Predators | 10 | reset | How many seeded predators to place. |
-| Prey (no claw) | 10 | reset | How many seeded prey without a claw to place. |
-| Prey (with claw) | 10 | reset | How many seeded burrowing prey to place. |
+| Prey (no claw) | 20 | reset | How many seeded prey without a claw to place. |
+| Prey (with claw) | 0 | reset | How many seeded burrowing prey to place. None by default, so claws have to evolve by mutation. |
 | Plants | 39 | reset | How many seeded plants to place. Plants only go where the soil is fertile enough for them to grow. |
-| Clawed killer becomes predator (chance) | 0.5 | live | When a clawed organism gains its first killer cell, the chance that it becomes a predator instead of staying prey. 0.5 is a coin flip. 1 turns the coin flip off, so clawed organisms become predators like any other organism. 0 keeps them prey. |
-| Claw cells are free | on | live | Claw cells don't count toward the food needed to reproduce. They still add lifespan and health, so claws can spread even when they are never used for burrowing. |
+| Clawed killer becomes predator (chance) | 1 | live | When a clawed organism gains its first killer cell, the chance that it becomes a predator instead of staying prey. 1 treats clawed organisms like any other organism. 0.5 is a coin flip. 0 keeps them prey. |
+| Claw cells are free | off | live | Claw cells don't count toward the food needed to reproduce. They still add lifespan and health, so claws can spread even when they are never used for burrowing. |
 | Don't age while hidden | on | live | Ticks spent underground don't count toward an organism's lifespan. |
 | Stay hidden near predators | on | live | A hidden organism stays underground while a predator is within the stay hidden range, for up to another hide duration. |
 | Stay hidden range | 6 | live | How close (in cells) a predator has to be to keep a hidden organism underground. |
-| Only burrow when predator is close | on | live | Prey with a claw only burrow when the predator they see is within the burrow trigger range. Further away, they run instead. |
+| Only burrow when predator is close | off | live | Prey with a claw only burrow when the predator they see is within the burrow trigger range. Further away, they run instead. |
 | Burrow trigger range | 8 | live | How close (in cells) a seen predator has to be before prey with a claw burrow. |
 
 The starting organisms are placed at seeded random free spots, in this order: predators, clawed prey, prey, then plants. If the grid is too crowded, fewer may be placed than asked for; the run config records how many were actually placed. Only the starting layout is seeded. The simulation itself still varies from run to run, so repeating a configuration with different placement seeds gives independent replicates.

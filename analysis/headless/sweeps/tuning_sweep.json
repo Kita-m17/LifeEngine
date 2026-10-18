@@ -1,0 +1,35 @@
+{
+  "name": "tuning_sweep",
+  "description": "Can evolutionary suicide be made more common? Starts from the current best settings (soil cost 10, hide duration 100, stay hidden range 6, soil regrowth 0.05) and changes one at a time. Changes that alter what the claw is worth to a prey also get a harmless-burrowing control.",
+  "ticks": 100000,
+  "every": 1000,
+  "seeds": {"from": 1, "to": 20},
+  "base": {
+    "predatorLifespanMultiplier": 2,
+    "burrowOnlyWhenClose": false,
+    "clawPredatorChance": 1,
+    "clawCellsFree": false,
+    "hibernateWhileHidden": true,
+    "stayHiddenNearPredator": true,
+    "numPredators": 10,
+    "numPrey": 20,
+    "numClawPrey": 0,
+    "numPlants": 39,
+    "hideFertilityCost": 10,
+    "hideDuration": 100,
+    "stayHiddenRange": 6,
+    "soilRegenRate": 0.05,
+    "minBurrowFertility": 1
+  },
+  "conditions": [
+    {"name": "current settings", "set": {}},
+    {"name": "hide duration 150", "set": {"hideDuration": 150}},
+    {"name": "soil cost 7", "set": {"hideFertilityCost": 7}},
+    {"name": "soil regrowth 0.025", "set": {"soilRegenRate": 0.025}},
+    {"name": "stay hidden range 3", "set": {"stayHiddenRange": 3}},
+    {"name": "stay hidden range 10", "set": {"stayHiddenRange": 10}},
+    {"name": "harmless, hide duration 150", "set": {"hideDuration": 150, "hideFertilityCost": 0}},
+    {"name": "harmless, stay hidden range 3", "set": {"stayHiddenRange": 3, "hideFertilityCost": 0}},
+    {"name": "harmless, stay hidden range 10", "set": {"stayHiddenRange": 10, "hideFertilityCost": 0}}
+  ]
+}
