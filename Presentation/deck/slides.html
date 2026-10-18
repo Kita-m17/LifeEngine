@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Digging Their Own Graves</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* the Life Engine's "neon" colour scheme (src/Rendering/ColorScheme.js) */
+  :root {
+    --empty: #0E1318; --panel: #121A22; --ink: #E6EDF3; --muted: #8B98A8; --grid: #1A2430;
+    --food: #2F7AB7; --mouth: #DEB14D; --producer: #15DE59; --mover: #60D4FF; --killer: #F82380;
+    --armor: #7230DB; --claw: #FF6B35; --eye: #B6C1EA; --soil-1: #47321F; --soil-2: #5A3F28; --soil-3: #352517;
+  }
+  @page { size: 1280px 720px; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--empty); }
+  body { color: var(--ink); font-family: Inter, "Helvetica Neue", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .slide { width: 1280px; height: 720px; position: relative; overflow: hidden; break-after: page; padding: 50px 64px 58px;
+           display: flex; flex-direction: column;
+           background-color: var(--empty);
+           background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+           background-size: 32px 32px; background-position: -1px -1px; }
+  .slide::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+                  background: radial-gradient(ellipse at 30% 20%, rgba(14,19,24,0.25), rgba(14,19,24,0.88) 70%); }
+  .slide > * { position: relative; z-index: 1; }
+  .slide > .cols, .slide > .fill { flex: 1; align-content: center; align-items: center; }
+  .slide > .fill { display: flex; flex-direction: column; justify-content: center; align-items: stretch; }
+
+  .kicker { font-family: Silkscreen, monospace; font-size: 15px; letter-spacing: 0.06em; color: var(--producer); text-transform: uppercase; margin: 0 0 10px; }
+  .kicker.q { color: var(--claw); }
+  h1 { font-family: Silkscreen, monospace; font-weight: 700; font-size: 66px; line-height: 1.02; margin: 0; letter-spacing: 0.01em; }
+  h2 { font-size: 42px; font-weight: 800; line-height: 1.12; margin: 0 0 18px; letter-spacing: -0.01em; }
+  h2 em { font-style: normal; color: var(--claw); }
+  h3 { font-size: 23px; font-weight: 700; margin: 0 0 8px; }
+  p, li { font-size: 22px; line-height: 1.42; }
+  p { margin: 0 0 10px; }
+  ul { margin: 0; padding-left: 22px; }
+  li { margin: 0 0 8px; }
+  li::marker { color: var(--muted); }
+  .muted { color: var(--muted); }
+  .small { font-size: 18.5px; line-height: 1.42; }
+  .tiny { font-size: 14.5px; color: var(--muted); }
+  b, strong { font-weight: 700; }
+  .c-claw { color: var(--claw); } .c-prey { color: var(--mover); } .c-pred { color: var(--killer); }
+  .c-plant { color: var(--producer); } .c-soil { color: var(--mouth); }
+
+  .cols { display: grid; gap: 34px; }
+  .two { grid-template-columns: 1fr 1fr; }
+  .wide-left { grid-template-columns: 1.35fr 1fr; }
+  .wide-right { grid-template-columns: 1fr 1.45fr; }
+  .fig { width: 100%; border-radius: 10px; display: block; }
+  .card { background: rgba(18,26,34,0.92); border: 1px solid #223040; border-radius: 12px; padding: 18px 20px; }
+  .card h3 { margin-bottom: 6px; }
+  .stat { font-family: Silkscreen, monospace; font-size: 46px; line-height: 1; margin: 2px 0 6px; }
+  .tag { display: inline-block; font-family: Silkscreen, monospace; font-size: 13px; padding: 4px 9px; border-radius: 4px; margin-right: 6px; letter-spacing: 0.04em; }
+  .tag.fail { background: rgba(248,35,128,0.16); color: var(--killer); border: 1px solid rgba(248,35,128,0.45); }
+  .tag.mis { background: rgba(255,107,53,0.16); color: var(--claw); border: 1px solid rgba(255,107,53,0.45); }
+  .tag.env { background: rgba(21,222,89,0.12); color: var(--producer); border: 1px solid rgba(21,222,89,0.4); }
+  .tag.seed { background: rgba(96,212,255,0.12); color: var(--mover); border: 1px solid rgba(96,212,255,0.4); }
+  .foot { position: absolute; left: 64px; right: 64px; bottom: 18px; display: flex; justify-content: space-between; font-size: 13px; color: #6B7888; z-index: 3; }
+  .foot .pg { font-family: Silkscreen, monospace; }
+
+  /* soil strata, for the burrowing story */
+  .slide > .soil { position: absolute; left: 0; right: 0; bottom: 0; height: 120px; z-index: 2;
+          background:
+            radial-gradient(circle at 12% 40%, #5A4330 3px, transparent 4px), radial-gradient(circle at 37% 70%, #5A4330 2px, transparent 3px),
+            radial-gradient(circle at 63% 35%, #5A4330 3px, transparent 4px), radial-gradient(circle at 88% 65%, #5A4330 2px, transparent 3px),
+            linear-gradient(var(--soil-2) 0 26px, var(--soil-1) 26px 68px, var(--soil-3) 68px 120px);
+          border-top: 3px solid #8A6440; }
+  .soil .burrow { position: absolute; width: 46px; height: 22px; border-radius: 0 0 24px 24px; background: #0E1318; top: 3px; }
+
+  /* organisms, drawn cell by cell from their real layouts */
+  .org { display: inline-grid; gap: 3px; vertical-align: middle; }
+  .org i { display: block; width: var(--s, 22px); height: var(--s, 22px); border-radius: 3px; position: relative; }
+  .org i.eye::after { content: ""; position: absolute; left: 42%; top: 15%; width: 16%; height: 70%; background: var(--empty); border-radius: 1px; }
+  .org i.empty { background: transparent; }
+  .specimen { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+  .specimen .label { font-family: Silkscreen, monospace; font-size: 15px; letter-spacing: 0.04em; }
+  .legend-cells { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 8px; }
+  .legend-cells span { display: inline-flex; align-items: center; gap: 7px; font-size: 17px; color: var(--muted); }
+  .legend-cells i { width: 15px; height: 15px; border-radius: 3px; display: inline-block; position: relative; }
+
+  .answer { display: grid; grid-template-columns: 52px 1fr; gap: 16px; align-items: start; padding: 14px 0; border-bottom: 1px solid #223040; }
+  .answer:last-child { border-bottom: none; }
+  .answer .n { font-family: Silkscreen, monospace; font-size: 36px; color: var(--claw); line-height: 1; }
+  .answer h3 { font-size: 23px; margin: 0 0 5px; }
+  .answer p { font-size: 20px; margin: 0; color: #C9D3DD; }
+  .chain { display: flex; align-items: stretch; gap: 0; margin: 4px 0 16px; }
+  .chain div { flex: 1; padding: 11px 13px; font-size: 17px; line-height: 1.3; background: rgba(18,26,34,0.92); border: 1px solid #223040; position: relative; }
+  .chain div + div { border-left: none; }
+  .chain div b { display: block; font-size: 13px; font-family: Silkscreen, monospace; color: var(--claw); margin-bottom: 3px; }
+  .chain div:first-child { border-radius: 10px 0 0 10px; } .chain div:last-child { border-radius: 0 10px 10px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 18px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #223040; }
+  th { color: var(--muted); font-weight: 600; font-size: 14px; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<!-- 1. Title -->
+<section class="slide">
+  <p class="kicker" style="margin-top: 40px;">UCT Honours · Artificial Life · Life Engine</p>
+  <h1>Digging<br>their own<br>graves</h1>
+  <p style="font-size: 25px; margin-top: 22px; max-width: 760px; color: #C9D3DD;">Burrowing, soil and extinction: can a trait that saves each individual doom the population?</p>
+  <div style="position: absolute; right: 90px; top: 150px; display: flex; gap: 44px; align-items: flex-end;">
+    <div class="specimen"><div class="org" data-org="plant" style="--s: 30px"></div><span class="label c-plant">plant</span></div>
+    <div class="specimen"><div class="org" data-org="clawprey" style="--s: 30px"></div><span class="label c-claw">burrower</span></div>
+    <div class="specimen"><div class="org" data-org="predator" style="--s: 30px"></div><span class="label c-pred">predator</span></div>
+  </div>
+  <div class="soil"><span class="burrow" style="left: 70%;"></span><span class="burrow" style="left: 78%; top: 40px;"></span><span class="burrow" style="left: 86%; top: 14px;"></span></div>
+  <div class="foot" style="color: #A88A6A;"><span>Group final presentation</span><span class="pg">01</span></div>
+</section>
+
+<!-- 2. The world -->
+<section class="slide">
+  <p class="kicker">The organism</p>
+  <h2>A world of cells, soil and one new trait</h2>
+  <div class="cols wide-left">
+    <div>
+      <ul>
+        <li><b>Organisms are built from cells.</b> Each cell type does one job, and offspring mutate by adding, removing or changing a cell.</li>
+        <li><b class="c-soil">Soil fertility.</b> Plants are only born where the soil under them averages at least 7 of 10. Unoccupied soil slowly regains fertility.</li>
+        <li><b class="c-claw">The claw cell.</b> A prey with a claw that sees a predator <b>burrows</b>: it is invisible for 100 ticks and doesn't age, but each burrow strips 10 fertility from the soil under it.</li>
+        <li><b>Roles come from the body.</b> A killer cell and no producer makes a <span class="c-pred">predator</span>; a producer that can't move is a <span class="c-plant">plant</span>; everything else is <span class="c-prey">prey</span>.</li>
+      </ul>
+      <div class="legend-cells">
+        <span><i style="background: var(--producer)"></i>producer</span><span><i style="background: var(--mouth)"></i>mouth</span>
+        <span><i style="background: var(--mover)"></i>mover</span><span><i style="background: var(--eye)"></i>eye</span>
+        <span><i style="background: var(--killer)"></i>killer</span><span><i style="background: var(--claw)"></i>claw</span>
+        <span><i style="background: var(--food)"></i>food</span>
+      </div>
+    </div>
+    <div class="card" style="display: grid; grid-template-columns: 1fr 1fr; gap: 26px 12px; align-items: end; padding: 26px 20px;">
+      <div class="specimen"><div class="org" data-org="plant"></div><span class="label c-plant">plant</span><span class="tiny">makes food</span></div>
+      <div class="specimen"><div class="org" data-org="prey"></div><span class="label c-prey">prey</span><span class="tiny">eats food, flees</span></div>
+      <div class="specimen"><div class="org" data-org="clawprey"></div><span class="label c-claw">clawed prey</span><span class="tiny">can burrow</span></div>
+      <div class="specimen"><div class="org" data-org="predator"></div><span class="label c-pred">predator</span><span class="tiny">eats prey only</span></div>
+    </div>
+  </div>
+  <div class="foot"><span>Starting organisms as built in the simulator (cell layouts from RandomOrganismGenerator)</span><span class="pg">02</span></div>
+</section>
+
+<!-- 3. The biology -->
+<section class="slide">
+  <p class="kicker">The biology</p>
+  <h2>Evolutionary suicide: when adaptation <em>causes</em> extinction</h2>
+  <div class="cols two">
+    <div>
+      <p>Natural selection favours whatever helps individuals leave more offspring, <b>even when it harms the population</b>. If a favoured trait degrades something everyone depends on, selection can drive its own carriers extinct.</p>
+      <p class="muted small" style="margin-top: 14px;">Gyllenberg &amp; Parvinen (2001), <i>Bull. Math. Biol.</i>; Rankin &amp; López-Sepulcre (2005), <i>Oikos</i>, "Can adaptation lead to extinction?"; Hardin (1968), "The tragedy of the commons", <i>Science</i>.</p>
+      <div class="card" style="margin-top: 18px;">
+        <h3 class="c-soil">A real echo: burrowers reshape soil</h3>
+        <p class="small" style="margin: 0;">Burrowing animals are ecosystem engineers. Introduced European rabbits in Australia, for example, burrow and graze so heavily that they strip vegetation and drive soil erosion.</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Our hypothesis</h3>
+      <div class="chain" style="flex-direction: column;">
+        <div style="border-radius: 10px 10px 0 0;"><b>1 · individual gain</b>Burrowing hides a prey from predators</div>
+        <div style="border-left: 1px solid #223040; border-top: none;"><b>2 · selection</b>Claws spread through the prey</div>
+        <div style="border-left: 1px solid #223040; border-top: none;"><b>3 · shared cost</b>Every burrow drains the soil plants need</div>
+        <div style="border-left: 1px solid #223040; border-top: none; border-radius: 0 0 10px 10px;"><b>4 · collapse</b>Plants fail, food runs out, burrowers die</div>
+      </div>
+      <p class="small muted" style="margin: 0;">The test: does the population survive <b>without</b> the trait, and only collapse <b>with</b> it?</p>
+    </div>
+  </div>
+  <div class="foot"><span>Mis-adaptation = a trait that is favoured yet ruinous · failure to adapt = no suitable trait in time</span><span class="pg">03</span></div>
+</section>
+
+<!-- 4. How we tested it -->
+<section class="slide">
+  <p class="kicker">The experiment</p>
+  <h2>Nearly 2,000 simulations, run like a field study</h2>
+  <div class="cols wide-left">
+    <div>
+      <ul>
+        <li><b>Same code, no screen.</b> A headless runner drives the simulator's own code, so hundreds of runs go in parallel.</li>
+        <li><b>Seeded layouts, random lives.</b> Soil and starting positions come from seeds; everything after that is stochastic, so replicates differ.</li>
+        <li><b>Controls, like knockout experiments:</b> the same starting layouts with one thing changed.
+          <ul style="margin-top: 6px;">
+            <li class="small">claws <b>seeded</b> at the start, or left to <b>evolve</b> by mutation</li>
+            <li class="small">burrowing <b>switched off</b>, or <b>harmless</b> to the soil</li>
+            <li class="small">soil density, patch size, regrowth; predator strength; plant regrowth</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+    <div class="card">
+      <table>
+        <tr><th>Study</th><th>Focus</th><th style="text-align: right;">Runs</th></tr>
+        <tr><td>Tarique</td><td>evolved claws, soil cost, predators</td><td class="n">456</td></tr>
+        <tr><td>Nik</td><td>evolved claws, soil settings, maps</td><td class="n">170+</td></tr>
+        <tr><td>Jenna</td><td>plant regrowth, plant death</td><td class="n">936</td></tr>
+        <tr><td>Josh</td><td>seeded vs evolved claws, soil layouts</td><td class="n">380</td></tr>
+      </table>
+      <p class="tiny" style="margin: 12px 0 0;">Plus browser runs. 100,000–250,000 ticks each. Proportions compared with Fisher's exact test.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Settings differ slightly between studies; each comparison is made within one study</span><span class="pg">04</span></div>
+</section>
+
+<!-- 5. Q1 -->
+<section class="slide">
+  <p class="kicker q">Question 1 · Did an extinction event occur?</p>
+  <h2>Yes, at every level, and often</h2>
+  <div class="cols wide-right" style="align-items: center;">
+    <div>
+      <div class="card" style="margin-bottom: 14px;"><p class="stat c-pred">167/380</p><p class="small" style="margin: 0;">of our headless runs ended with <b>every organism dead</b>; in Nik's sweep, 111 of 111</p></div>
+      <div class="card" style="margin-bottom: 14px;"><p class="stat c-claw">21/40</p><p class="small" style="margin: 0;">runs where evolved claws took over and then <b>every prey died</b> (Tarique)</p></div>
+      <div class="card"><p class="stat c-prey">Lineages</p><p class="small" style="margin: 0;">The seeded predators died out in <b>every</b> batch run; seeded burrowing prey died out in every run with all the claw's benefits switched off</p></div>
+    </div>
+    <div>
+      <img class="fig" src="figures/extinction_timing.png">
+      <p class="tiny" style="margin-top: 8px;">When 160 worlds died (batches with seeded claws, 300 runs). Most die early, a few after 100k ticks of apparent stability.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Whole-world extinction usually ends with plants: with no animals to eat it, food piles up and blocks plant offspring</span><span class="pg">05</span></div>
+</section>
+
+<!-- 6. Q2 failure to adapt -->
+<section class="slide">
+  <p class="kicker q">Question 2 · Mis-adaptation or failure to adapt?</p>
+  <h2><span class="tag fail">failure to adapt</span> Most worlds die before evolution can act</h2>
+  <div class="cols wide-right" style="align-items: center;">
+    <div>
+      <ul>
+        <li><b>The first predator wave.</b> Seeded predators feed on the first prey boom, multiply about 25×, and overshoot.</li>
+        <li><b>88 of 160</b> world extinctions came before 30,000 ticks. When the prey died, <b>82%</b> of predators were still the seeded ones.</li>
+        <li>Claws appear within ~1,200 ticks, but prey were usually gone by <b>5,500</b>, while claws were on only ~4% of them (Nik).</li>
+        <li>With all the claw's benefits off, the seeded burrowers bred at half the rate of other prey and were the first to vanish.</li>
+      </ul>
+    </div>
+    <div>
+      <img class="fig" src="figures/early_wave.png">
+      <p class="tiny" style="margin-top: 8px;">Browser run, claw benefits off: <span class="c-pred">predators</span> boom and the <span class="c-claw">clawed prey</span> are gone by tick 4,000.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Ecological overshoot, not evolution: the prey had no time to adapt</span><span class="pg">06</span></div>
+</section>
+
+<!-- 7. Q2 the claw evolves -->
+<section class="slide">
+  <p class="kicker q">Question 2 · Mis-adaptation or failure to adapt?</p>
+  <h2><span class="tag mis">mis-adaptation</span> Given time, the claw evolves, because it works</h2>
+  <div class="fill">
+  <img class="fig" src="figures/claw_spread.png" style="max-height: 390px; width: auto; margin: 0 auto 16px;">
+  <div class="cols two" style="gap: 30px;">
+    <p class="small" style="margin: 0;"><b>No organism starts with a claw.</b> It appears by mutation in <b>every run</b> (80 of 80), within a median of about 1,000 ticks.</p>
+    <p class="small" style="margin: 0;"><b>It spreads only when burrowing works:</b> 7/10 take-overs against 1/10 when claws cost food (p = 0.02), 10/10 against 2/10 when free (p = 0.0007). Selection favours the claw <i>for</i> burrowing.</p>
+  </div>
+  </div>
+  <div class="foot"><span>Josh's claw-evolution batch · 10 runs per setup · predator lifespan multiplier 2 · bands are ±1 std</span><span class="pg">07</span></div>
+</section>
+
+<!-- 8. Q2 the collapse -->
+<section class="slide">
+  <p class="kicker q">Question 2 · Mis-adaptation or failure to adapt?</p>
+  <h2><span class="tag mis">mis-adaptation</span> …and then the burrowers dig their own grave</h2>
+  <div class="fill">
+  <div class="chain">
+    <div><b>8k</b>Evolved claws take over the prey</div>
+    <div><b>8k → 15k</b>Burrows drain the soil to 74%</div>
+    <div><b>→ 20k</b>Plants crash from 468 to 35</div>
+    <div><b>→ 57k</b>Clawed prey dwindle and die</div>
+    <div><b>65k</b>Nothing is left</div>
+  </div>
+  <div class="cols wide-right" style="align-items: start;">
+    <div>
+      <div class="card" style="margin-bottom: 14px;"><p class="stat c-claw">21/40 vs 0/20</p><p class="small" style="margin: 0;">prey extinct after claws took over, damaging vs <b>harmless</b> burrowing (Tarique, p = 0.00002). Without working claws, prey survived 17/20.</p></div>
+      <div class="card"><p class="stat c-claw">11/11 vs 0/5</p><p class="small" style="margin: 0;">burrower populations extinct after spreading, with vs without soil damage (Nik, p ≈ 0.0002).</p></div>
+    </div>
+    <div>
+      <img class="fig" src="figures/collapse_chain.png">
+    </div>
+  </div>
+  </div>
+  <div class="foot"><span>One run (claws evolved, free, burrowing on). The soil recovers after the burrowers die, too late for them.</span><span class="pg">08</span></div>
+</section>
+
+<!-- 9. Q2 verdict -->
+<section class="slide">
+  <p class="kicker q">Question 2 · Mis-adaptation or failure to adapt?</p>
+  <h2>Both, depending on how far evolution gets</h2>
+  <div class="fill">
+  <div class="cols two">
+    <div class="card">
+      <span class="tag fail">failure to adapt</span>
+      <h3 style="margin-top: 12px;">The common route</h3>
+      <ul class="small">
+        <li class="small">Strong seeded predators, prey with no defence yet</li>
+        <li class="small">Collapse within ~30k ticks, before the claw spreads</li>
+        <li class="small">Happens just as often with burrowing switched off (Nik's controls)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag mis">mis-adaptation</span>
+      <h3 style="margin-top: 12px;">Evolutionary suicide, when the claw gets a chance</h3>
+      <ul class="small">
+        <li class="small">The claw evolves and spreads <b>because</b> it protects (vs burrowing off)</li>
+        <li class="small">It kills only when burrowing damages the soil (vs harmless burrowing)</li>
+        <li class="small">Prey survive without the claw: the collapse is the trait's doing</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card" style="margin-top: 20px;">
+    <h3 class="c-pred">A second, subtler route</h3>
+    <p class="small" style="margin: 0;">Clawed prey that grow a killer cell can become predators. In 9 of 22 late collapses, the predator that wiped out the prey had evolved <b>from the prey's own lineage</b>, and in about 10 a newly evolved predator spread and the world died within a few thousand ticks. Suggestive of evolutionary suicide, but not yet proven by replay.</p>
+  </div>
+  </div>
+  <div class="foot"><span>Not yet measured: whether clawed prey still out-reproduce clawless prey as the population declines</span><span class="pg">09</span></div>
+</section>
+
+<!-- 10. Q3 -->
+<section class="slide">
+  <p class="kicker q">Question 3 · Environment vs the initial seeded species?</p>
+  <h2>The seeded species decide <em>whether</em> burrowers get a chance; the environment decides <em>what happens</em> to them</h2>
+  <div class="cols wide-right" style="align-items: start;">
+    <div>
+      <p style="margin-bottom: 6px;"><span class="tag seed">seeded species</span></p>
+      <ul class="small">
+        <li class="small"><b>Predator strength</b> sets the first wave: at lifespan ×3, predators killed all prey in 7/8 runs even without burrowing; ×2 lets prey survive (Tarique)</li>
+        <li class="small"><b>Seeding claws</b> lets prey skip the wait and survive the first wave</li>
+        <li class="small">The seeded predators <b>never last</b>: evolved predators replace them</li>
+      </ul>
+      <p style="margin: 12px 0 6px;"><span class="tag env">environment</span></p>
+      <ul class="small">
+        <li class="small"><b>Soil</b> density, patch size and regrowth (right)</li>
+        <li class="small"><b>Plant regrowth</b> rescues worlds from the claw (Jenna)</li>
+        <li class="small"><b>Map luck</b>: the pattern appeared on one soil map, not another (Nik)</li>
+      </ul>
+    </div>
+    <div>
+      <img class="fig" src="figures/soil_survival.png">
+      <p class="tiny" style="margin-top: 8px;">Josh's soil-layouts batch: 270 runs, 6 setups × 9 soil layouts × 5 soil seeds. Runs lasting 250,000 ticks.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Same starting species, different soil: survival ranges from 80% to 0%</span><span class="pg">10</span></div>
+</section>
+
+<!-- 11. Q4 -->
+<section class="slide">
+  <p class="kicker q">Question 4 · Instrumental features and traits</p>
+  <h2>What made the difference</h2>
+  <div class="fill">
+    <img class="fig" src="figures/group_evidence.png" style="max-height: 300px; width: auto; margin: 0 auto 4px;">
+    <p class="tiny" style="text-align: center; margin: 0 0 14px;">Left: Tarique, soil removed per burrow. Middle: Nik, soil damage on vs off. Right: Jenna, plant regrowth (reference settings).</p>
+    <div class="cols two" style="gap: 30px; align-items: start;">
+      <div>
+        <p style="margin-bottom: 6px;"><span class="tag env">environment</span></p>
+        <ul class="small">
+          <li class="small"><b>Soil damage per burrow</b>: 0 or 3 never collapses; 10 collapses half</li>
+          <li class="small"><b>Soil and plant regrowth</b>: fast recovery rescues the world</li>
+          <li class="small"><b>Food blocking</b>: without consumers, food chokes plant offspring</li>
+        </ul>
+      </div>
+      <div>
+        <p style="margin-bottom: 6px;"><span class="tag mis">traits</span></p>
+        <ul class="small">
+          <li class="small"><b class="c-claw">Claw</b>: the trait that both saves and dooms</li>
+          <li class="small"><b>Eye</b>: claw mutations often replace it; 11 of 12 clawed prey in one replay were blind and never burrowed</li>
+          <li class="small"><b class="c-pred">Killer cell</b>: turns clawed prey into predators; <b>hide length</b>: at 30 ticks the claw never pays</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>A window of settings: predators strong enough to make burrowing pay, burrows damaging enough to matter</span><span class="pg">11</span></div>
+</section>
+
+<!-- 12. Loophole -->
+<section class="slide">
+  <p class="kicker">Evolution finds loopholes</p>
+  <h2>When claws were free, <em>predators</em> took them, and lost their eyes</h2>
+  <div class="cols wide-left" style="align-items: center;">
+    <div>
+      <div style="display: flex; gap: 60px; align-items: flex-end; margin: 6px 0 22px 10px;">
+        <div class="specimen"><div class="org" data-org="predator"></div><span class="label c-pred">seeded predator</span><span class="tiny">6 cells · 11 food to breed</span></div>
+        <div style="font-size: 34px; color: var(--muted); padding-bottom: 50px;">→</div>
+        <div class="specimen"><div class="org" data-org="eyeless"></div><span class="label c-claw">eyeless clawed predator</span><span class="tiny">5 cells · 4 food to breed</span></div>
+      </div>
+      <ul class="small">
+        <li class="small">A <b>free claw</b> adds lifespan and health but costs no food, so predators keep them; none ever burrowed.</li>
+        <li class="small">Mouths are useless to predators and eyes cost food: a <b>cheap random walker</b> breeding ~3× as often beats a hunter.</li>
+        <li class="small">It came to dominate some worlds on its own: selection optimises the rules, not the design.</li>
+      </ul>
+    </div>
+    <div>
+      <img class="fig" src="figures/predator_claws.png">
+      <p class="tiny" style="margin-top: 8px;">Share of predators carrying claws late in the runs, across 9 soil layouts. Claw-off: claws cost food.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Eyeless predator layout is illustrative; its cells (mover, killer, 3 claws) are from the species record</span><span class="pg">12</span></div>
+</section>
+
+<!-- 13. Answers -->
+<section class="slide">
+  <p class="kicker">Answers to the brief</p>
+  <h2>In four lines</h2>
+  <div class="fill" style="justify-content: flex-start;">
+  <div class="answer"><span class="n">1</span><div><h3>Did an extinction event occur?</h3><p>Yes: whole worlds, prey populations and lineages went extinct in a large share of runs.</p></div></div>
+  <div class="answer"><span class="n">2</span><div><h3>Mis-adaptation or failure to adapt?</h3><p>Mostly failure to adapt, as the first predator wave struck before the claw spread. When the claw had time, it was a mis-adaptation: favoured for hiding, fatal through the soil it destroyed.</p></div></div>
+  <div class="answer"><span class="n">3</span><div><h3>Environment vs the initial seeded species?</h3><p>The seeded predators decide whether burrowers get a chance; soil and plant recovery decide whether the burrowers then destroy themselves.</p></div></div>
+  <div class="answer"><span class="n">4</span><div><h3>Instrumental features and traits?</h3><p>Soil damage per burrow, soil and plant regrowth, food blocking; the claw, the eye it replaces, and the killer cell that turns prey into predators.</p></div></div>
+  </div>
+  <div class="foot"><span></span><span class="pg">13</span></div>
+</section>
+
+<!-- 14. Limits -->
+<section class="slide">
+  <p class="kicker">Limitations and next steps</p>
+  <h2>What we can't claim yet</h2>
+  <div class="cols two" style="align-items: stretch; align-content: center; margin-bottom: 70px;">
+    <div class="card">
+      <h3>Limitations</h3>
+      <ul class="small">
+        <li class="small">10–40 runs per setup: differences of 2–3 runs could be chance</li>
+        <li class="small">Studies used slightly different settings and grids</li>
+        <li class="small">Collapse rate depends on behaviour settings: with "burrow only when a predator is close" on, evolved claws collapsed 2 of 20 worlds here, against 21 of 40 in Tarique's runs with it off</li>
+        <li class="small">Proximate cause of death is mostly predation; the soil acts by stopping plants recovering</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Next</h3>
+      <ul class="small">
+        <li class="small">Measure fitness of clawed vs clawless prey <b>during</b> a decline: does selection still favour the claw?</li>
+        <li class="small">Replay suspected suicides with and without the invading predator</li>
+        <li class="small">Close the free-claw loophole for predators</li>
+        <li class="small">More soil maps per setup</li>
+      </ul>
+    </div>
+  </div>
+  <div class="soil" style="height: 70px;"></div>
+  <div class="foot" style="color: #A88A6A;"><span></span><span class="pg">14</span></div>
+</section>
+
+<!-- 15. Thanks -->
+<section class="slide">
+  <p class="kicker" style="margin-top: 60px;">Thank you</p>
+  <h1 style="font-size: 54px;">Questions?</h1>
+  <p style="font-size: 21px; color: #C9D3DD; margin-top: 22px; max-width: 760px;">Built on The Life Engine by Max Robinson, extended with soil fertility, burrowing claws, role tagging, seeded run setup and a headless experiment runner.</p>
+  <p class="small muted" style="margin-top: 28px; max-width: 820px;">References: Gyllenberg, M. &amp; Parvinen, K. (2001). Necessary and sufficient conditions for evolutionary suicide. <i>Bulletin of Mathematical Biology</i> 63, 981–993. · Rankin, D. J. &amp; López-Sepulcre, A. (2005). Can adaptation lead to extinction? <i>Oikos</i> 111, 616–619. · Hardin, G. (1968). The tragedy of the commons. <i>Science</i> 162, 1243–1248.</p>
+  <div style="position: absolute; right: 100px; top: 120px; display: flex; gap: 40px; align-items: flex-end;">
+    <div class="specimen"><div class="org" data-org="clawprey" style="--s: 28px"></div></div>
+    <div class="specimen"><div class="org" data-org="plant" style="--s: 28px"></div></div>
+  </div>
+  <div class="soil"><span class="burrow" style="left: 12%;"></span><span class="burrow" style="left: 20%; top: 38px;"></span></div>
+  <div class="foot" style="color: #A88A6A;"><span>Reports: Burrowing Into Extinction (Tarique) · Soil study (Nik) · Plant regrowth (Jenna) · Claw evolution and soil layouts (Josh)</span><span class="pg">15</span></div>
+</section>
+
+<script>
+  // organism bodies as [column, row, cell] from the simulator's starting organisms
+  const BODIES = {
+    plant: [[0, 0, "mouth"], [1, 1, "producer"], [-1, -1, "producer"]],
+    prey: [[0, 0, "mover"], [1, 0, "eye"], [0, -1, "mouth"], [-1, 0, "mouth"]],
+    clawprey: [[0, 0, "mover"], [1, 0, "eye"], [0, -1, "mouth"], [-1, 0, "mouth"], [0, 1, "claw"]],
+    predator: [[0, 0, "mouth"], [0, -1, "killer"], [0, 1, "mouth"], [-1, 0, "mover"], [-2, 0, "eye"], [1, 0, "eye"]],
+    eyeless: [[0, 0, "mover"], [1, 0, "killer"], [-1, 0, "claw"], [0, -1, "claw"], [0, 1, "claw"]],
+  };
+  const COLORS = { mouth: "#DEB14D", producer: "#15DE59", mover: "#60D4FF", killer: "#F82380", eye: "#B6C1EA", claw: "#FF6B35", armor: "#7230DB" };
+  for (const el of document.querySelectorAll(".org[data-org]")) {
+    const cells = BODIES[el.dataset.org];
+    const cols = cells.map(c => c[0]), rows = cells.map(c => c[1]);
+    const c0 = Math.min(...cols), r0 = Math.min(...rows);
+    const w = Math.max(...cols) - c0 + 1, h = Math.max(...rows) - r0 + 1;
+    el.style.gridTemplateColumns = `repeat(${w}, var(--s, 22px))`;
+    const at = new Map(cells.map(([c, r, t]) => [`${c - c0},${r - r0}`, t]));
+    for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
+      const i = document.createElement("i");
+      const type = at.get(`${c},${r}`);
+      if (type) { i.style.background = COLORS[type]; if (type === "eye") i.className = "eye"; i.style.boxShadow = `0 0 10px ${COLORS[type]}55`; }
+      else i.className = "empty";
+      el.appendChild(i);
+    }
+  }
+</script>
+</body>
+</html>

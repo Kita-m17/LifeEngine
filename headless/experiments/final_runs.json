@@ -1,0 +1,40 @@
+{
+  "name": "final-runs",
+  "description": "Final experiments. A map is a soil seed x layout (dense/large, medium/medium, sparse/small patches): 5 seeds x 3 layouts = 15 maps. A map type adds a soil regen chance (1, 2.5, 5, 10 % per tick): 60 map types, each run 3 times with the same placement (seed 1), so replicates differ only in the run itself. Three sets of 180 runs: main (claws evolve, burrowing costs soil), no-claw control (claws can't evolve) and no burrow cost. Seeded organisms: 10 predators, 10 prey_small, 10 prey_large, 39 plants (seeded species/), none with a claw.",
+  "ticks": 250000,
+  "seeds":     [1, 1, 1, 1, 1],
+  "soilSeeds": [42, 7, 123, 2024, 99],
+  "replicates": 3,
+  "grid": {"cols": 384, "rows": 193, "cell_size": 5},
+  "base": {
+    "minPlantFertility": 7,
+    "predatorLifespanMultiplier": 2,
+    "predatorMoveInterval": 3,
+    "burrowerMoveInterval": 1,
+    "hideFertilityCost": 10,
+    "clawCellsEnabled": true,
+    "clawCellsFree": false,
+    "burrowOnlyWhenClose": false,
+    "hibernateWhileHidden": true,
+    "stayHiddenNearPredator": true,
+    "preyPredatorChance": 0.5,
+    "numPredators": 10,
+    "numPrey": 10,
+    "numLargePrey": 10,
+    "numPlants": 39
+  },
+  "vary": {
+    "soilRegenRate": [1, 2.5, 5, 10]
+  },
+  "configs": [
+    {"label": "main-dense",     "set": {"soilPatchThreshold": -0.1, "soilPatchResolution": 10}},
+    {"label": "main-medium",    "set": {"soilPatchThreshold": 0,    "soilPatchResolution": 20}},
+    {"label": "main-sparse",    "set": {"soilPatchThreshold": 0.1,  "soilPatchResolution": 40}},
+    {"label": "noclaw-dense",   "set": {"soilPatchThreshold": -0.1, "soilPatchResolution": 10, "clawCellsEnabled": false}},
+    {"label": "noclaw-medium",  "set": {"soilPatchThreshold": 0,    "soilPatchResolution": 20, "clawCellsEnabled": false}},
+    {"label": "noclaw-sparse",  "set": {"soilPatchThreshold": 0.1,  "soilPatchResolution": 40, "clawCellsEnabled": false}},
+    {"label": "nocost-dense",   "set": {"soilPatchThreshold": -0.1, "soilPatchResolution": 10, "hideFertilityCost": 0}},
+    {"label": "nocost-medium",  "set": {"soilPatchThreshold": 0,    "soilPatchResolution": 20, "hideFertilityCost": 0}},
+    {"label": "nocost-sparse",  "set": {"soilPatchThreshold": 0.1,  "soilPatchResolution": 40, "hideFertilityCost": 0}}
+  ]
+}

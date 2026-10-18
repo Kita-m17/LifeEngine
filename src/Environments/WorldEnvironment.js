@@ -1,5 +1,6 @@
 const Environment = require('./Environment');
 const Renderer = require('../Rendering/Renderer');
+const NullRenderer = require('../Rendering/NullRenderer');
 const GridMap = require('../Grid/GridMap');
 const Organism = require('../Organism/Organism');
 const CellStates = require('../Organism/Cell/CellStates');
@@ -11,15 +12,25 @@ const WorldConfig = require('../WorldConfig');
 const SerializeHelper = require('../Utils/SerializeHelper');
 const Species = require('../Stats/Species');
 const RandomOrganismGenerator = require('../Organism/RandomOrganismGenerator');
+const generateSoil = require('../Grid/SoilLayout');
 
 class WorldEnvironment extends Environment{
-    constructor(engine, cell_size) {
+    // size ({cols, rows}) runs the world without a page (headless/run.js): a fixed grid, nothing drawn and no mouse controls
+    constructor(engine, cell_size, size=null) {
         super();
         this.engine = engine;
-        this.renderer = new Renderer('env-canvas', 'env', cell_size);
-        this.controller = new EnvironmentController(this, this.renderer.canvas);
-        this.num_rows = Math.ceil(this.renderer.height / cell_size);
-        this.num_cols = Math.ceil(this.renderer.width / cell_size);
+        if (size) {
+            this.renderer = new NullRenderer(cell_size);
+            this.controller = null;
+            this.num_cols = size.cols;
+            this.num_rows = size.rows;
+        }
+        else {
+            this.renderer = new Renderer('env-canvas', 'env', cell_size);
+            this.controller = new EnvironmentController(this, this.renderer.canvas);
+            this.num_rows = Math.ceil(this.renderer.height / cell_size);
+            this.num_cols = Math.ceil(this.renderer.width / cell_size);
+        }
         this.grid_map = new GridMap(this.num_cols, this.num_rows, cell_size);
         this.applySoil();
         this.organisms = [];
@@ -88,17 +99,20 @@ class WorldEnvironment extends Environment{
 
     // the starting organisms from EnvironmentParams, placed deterministically by the placement seed
     OriginOfLife() {
-        let placed = RandomOrganismGenerator.generateSeeded(this, (organism) => {
+        let placed = RandomOrganismGenerator.generateSeeded(this, (organism, species_name) => {
             this.addOrganism(organism);
-            FossilRecord.addSpecies(organism, null);
+            const species = FossilRecord.addSpecies(organism, null);
+            if (species.name !== species_name)
+                FossilRecord.changeSpeciesName(species, species_name);
         });
         this.recordRunConfig(placed);
     }
 
     // the soil layout from EnvironmentParams (seed, density and patch size). Fertility starts at each cell's cap
     applySoil() {
-        this.controller.generateFertilityTerrain(EnvironmentParams.soilSeed, EnvironmentParams.soilPatchThreshold,
+        generateSoil(this.grid_map, EnvironmentParams.soilSeed, EnvironmentParams.soilPatchThreshold,
             EnvironmentParams.soilPatchResolution);
+        this.renderer.renderFullGrid(this.grid_map.grid);
     }
 
     // snapshot of the configuration this run started with, exported with the logs (run_config CSV). placed is how
@@ -116,8 +130,9 @@ class WorldEnvironment extends Environment{
             grid_rows: this.num_rows,
             cell_size: this.renderer.cell_size,
             soil_fertile_frac: cells > 0 ? fertile / cells : 0,
+            species_threshold: FossilRecord.species_threshold,
         });
-        for (let role of ['predators', 'prey', 'claw_prey', 'plants'])
+        for (let role of ['predators', 'prey', 'large_prey', 'plants'])
             config['placed_' + role] = placed ? placed[role] : 0;
         for (let key in Hyperparams) {
             if (typeof Hyperparams[key] !== 'object' && typeof Hyperparams[key] !== 'function')
@@ -220,6 +235,12 @@ class WorldEnvironment extends Environment{
     }
 
     resizeGridColRow(cell_size, cols, rows) {
+        cell_size = Number(cell_size);
+        cols = Number(cols);
+        rows = Number(rows);
+        // the soil layout, starting placement and run config all read these, so they must follow the new size
+        this.num_cols = cols;
+        this.num_rows = rows;
         this.renderer.cell_size = cell_size;
         this.renderer.fillShape(rows*cell_size, cols*cell_size);
         this.grid_map.resize(cols, rows, cell_size);
