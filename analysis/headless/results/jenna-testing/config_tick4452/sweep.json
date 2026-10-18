@@ -1,0 +1,76 @@
+{
+  "name": "config_tick4452",
+  "description": "Browser config run_config_tick4452.csv (306 x 140 grid): every setting as exported (soil cost 10) versus harmless burrowing (soil cost 0), 20 placement seeds each.",
+  "ticks": 150000,
+  "every": 1000,
+  "seeds": {
+    "from": 1,
+    "to": 20
+  },
+  "grid": {
+    "cols": 306,
+    "rows": 140,
+    "cell": 5
+  },
+  "base": {
+    "soilSeed": 42,
+    "soilPatchThreshold": 0,
+    "soilPatchResolution": 20,
+    "soilRegenRate": 0.01,
+    "soilRegenAmount": 1,
+    "minPlantFertility": 10,
+    "plantRegrowthRate": 1,
+    "numPredators": 10,
+    "numPrey": 10,
+    "numClawPrey": 10,
+    "numPlants": 39,
+    "clawPredatorChance": 0.5,
+    "clawCellsFree": true,
+    "hibernateWhileHidden": true,
+    "stayHiddenNearPredator": false,
+    "stayHiddenRange": 6,
+    "burrowOnlyWhenClose": false,
+    "burrowTriggerRange": 8,
+    "lifespanMultiplier": 150,
+    "predatorLifespanMultiplier": 3,
+    "predatorMoveInterval": 3,
+    "burrowerMoveInterval": 1,
+    "foodProdProb": 5,
+    "useGlobalMutability": false,
+    "globalMutability": 5,
+    "addProb": 25,
+    "changeProb": 25,
+    "removeProb": 25,
+    "brainMutationChance": 25,
+    "mutationSymmetryChance": 10,
+    "rotationEnabled": true,
+    "foodBlocksReproduction": true,
+    "moversCanProduce": false,
+    "instaKill": false,
+    "dontKillSameSpecies": false,
+    "lookRange": 30,
+    "seeThroughSelf": false,
+    "evolveIndependentEyeDecisions": true,
+    "foodDropProb": 0,
+    "extraMoverFoodCost": 0,
+    "hideDuration": 200,
+    "hideFertilityCost": 10,
+    "minBurrowFertility": 1,
+    "maxOrganisms": -1,
+    "maxFertility": 10
+  },
+  "conditions": [
+    {
+      "name": "soil cost 10",
+      "set": {
+        "hideFertilityCost": 10
+      }
+    },
+    {
+      "name": "harmless burrowing",
+      "set": {
+        "hideFertilityCost": 0
+      }
+    }
+  ]
+}

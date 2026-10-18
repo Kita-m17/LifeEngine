@@ -13,13 +13,15 @@ regrowth behaves exactly as in the browser.
 | `sweeps/*.json` | The sweep files behind the results below. Each one lists its settings, setups and seeds. |
 | `plot_evo_suicide.py` | Classifies every run and draws the figures and `summary.csv`. The docstring explains the outcome rules and each figure. |
 | `plot_steps.py` | One outcome bar per hand-picked setup, across result folders. |
+| `plot_timeline.py` | One row per run, coloured by whether most prey have a claw, no prey are left or nothing is alive, at every sample. |
 
 Plotting needs `pip install matplotlib numpy`.
 
 ## Results (`results/jenna-testing/`)
 
-Every run here is 100,000 ticks on this branch's code (commit `919202f`). Each sweep folder holds one JSON file per run,
-a copy of its sweep file (`sweep.json`) and the figures in `figures/`. The PDF report summarises all of them.
+Every run here is 100,000 ticks on this branch's code (commit `919202f`), except `config_tick4452` (150,000 ticks). Each
+sweep folder holds one JSON file per run, a copy of its sweep file (`sweep.json`) and the figures in `figures/`.
+`jenna-testing_burrowing_report.pdf` summarises all of them except `config_tick4452`, which has its own report in its folder.
 
 | Folder | Runs | What it tests |
 |---|---|---|
@@ -31,6 +33,7 @@ a copy of its sweep file (`sweep.json`) and the figures in `figures/`. The PDF r
 | `predator_sweep` | 96 | Predator lifespan multiplier 3, 1.5 and 1 (2 is in `evo_suicide`) |
 | `hide_sweep` | 80 | 30-tick hides |
 | `tuning_sweep` | 180 | Hide duration 150, soil cost 7, soil regrowth 0.025, stay hidden range 3 and 10 |
+| `config_tick4452` | 40 | The settings from `run_config_tick4452.csv` on its 306 x 140 grid for 150,000 ticks: soil cost 10 against harmless burrowing |
 
 Each run's JSON contains `meta` (sweep, setup name, placement seed, switched-off changes), `settings` (what the sweep
 set), `environment_params` and `hyperparams` (every value the run used), `extinct_at` (the tick every organism was dead,
