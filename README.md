@@ -137,6 +137,50 @@ The grid defaults to 384 x 193 cells with cell size 5. This is the size the brow
 - Dev mode (better error messages): `npm run build-dev` 
 
 
+# File Structure
+Run logs (`Observations/`), analysis results (`results/`) and presentation files are git-ignored, so they are not
+listed here.
+
+```
+LifeEngine/
+├── src/                          simulation code, shared by the browser and the headless runner
+│   ├── index.js, Engine.js       entry point and main loop
+│   ├── EnvironmentParams.js      Run Setup settings (soil, seeded organisms, claw switches); defaults = final runs
+│   ├── Hyperparameters.js        Evolution Controls (lifespans, mutation, movement intervals, burrow cost)
+│   ├── WorldConfig.js            world options (headless flag, auto reset, brush size)
+│   ├── Environments/             WorldEnvironment (soil, regeneration, placing seeded organisms), organism editor
+│   ├── Grid/                     GridMap (cells and fertility), SoilLayout (seeded soil patches), Neighbors
+│   ├── Organism/
+│   │   ├── Organism.js           roles and tagging, reproduction, burrowing and hiding, movement
+│   │   ├── Anatomy.js, RandomOrganismGenerator.js   bodies, and loading the seeded species
+│   │   ├── Cell/                 cell states, grid cells (fertility), body cells incl. ClawCell.js
+│   │   └── Perception/           Brain.js (predator chase, prey retreat or burrow), observations
+│   ├── Stats/                    FossilRecord (species, logging, CSV export), StatsPanel and Charts/
+│   ├── Controllers/              UI controls, including the Run Setup tab
+│   ├── Rendering/                drawing, plus NullRenderer for headless runs
+│   └── Utils/                    Perlin and seeded Perlin noise, save helpers
+├── dist/                         browser app (index.html, css, img, assets); npm run build writes js/bundle.js here
+├── headless/                     headless runner
+│   ├── run.js                    one run, writes the CSV logs
+│   ├── batch.js                  a batch of runs from an experiment file, in parallel
+│   ├── settings.js               applies settings, checks their names, default grid
+│   └── experiments/              experiment files: final_runs, slow_regen_{main,noclaw,nocost}, earlier tests
+├── seeded species/               the starting organisms: predator, prey_small, prey_large, plant
+├── experiment params/            slow_regen_parameters.json: every parameter of the final runs
+├── analysis/                     Python analysis and plotting
+│   ├── plot_metrics.py           per-run and averaged plots of any batch
+│   ├── dynamics_load.py, dynamics_analysis.py   loading runs, growth, fitness, collapse pathways
+│   ├── final_analysis.py         analysis of the 1–10% regen runs
+│   ├── slow_regen_analysis.py    analysis of the final (slow-regen) runs
+│   ├── slow_regen_deck.py, growth_rate_slide.py, slow_regen_presentation.py   presentation figures and slides
+│   ├── claw_evolution.py         claw spread over time
+│   └── headless/                 earlier JSON-based runner and parameter sweeps (evolutionary suicide, hiding, predators)
+├── docs/metrics/                 screenshots of the Statistics tab
+├── Changelog.md, LICENSE         from the original Life Engine
+└── package.json, webpack.config.js   npm and build setup
+```
+
+
 # How the Simulation Works
 ## The Environment
 The environment is a simple grid system made up of cells, which at every tick have a certain type. The environment is populated by organisms, which are structures of multiple cells.
