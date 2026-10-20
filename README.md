@@ -98,6 +98,8 @@ To load custom creations (found in `/dist/assets`), you must have a simple web s
  - run `python -m http.server --directory dist` from the repository root
  - Open `http://localhost:8000/` in your browser
 
+An alternative is to simply run `npx serve dist` and paste the localhost link into your browser.
+
 ### Our experiments
 The final experiments are in `headless/experiments/`. They all start from the same seeded species, and claws start
 absent:
