@@ -1,30 +1,125 @@
-This is the readme for my evolution simulator, The Life Engine. 
+# Digging Their Own Graves: The Life Engine with soil, claws and burrowing
 
-For UCT Artificial Life Cource
+A UCT Artificial Life project by Jenna Rigby, Tarique Mackay, Joshua Diegaardt and Nikita Martin, built on
+[The Life Engine](https://github.com/MaxRobinsonTheGreat/EvolutionSimulatorV2) by Max Robinson.
+
+Our question: can a trait that saves each individual doom the population? Prey can evolve a **claw** that lets them
+burrow out of a predator's sight, but every burrow strips fertility from the soil, and plants (the prey's food) only
+grow on fertile soil. We added soil, predator and prey roles, claws and burrowing, detailed logging and a headless
+runner to test whether the claw spreads and then drives its own population extinct (evolutionary suicide).
+
+The original Life Engine is a cellular automaton for long-term evolution: organisms eat, reproduce, mutate and adapt,
+with no fitness function, only natural selection. The original rules are described under
+[How the Simulation Works](#how-the-simulation-works), with our changes folded in.
 
 
-# The Life Engine
-[Play here!](https://thelifeengine.net/)
+# What we changed
 
-The life engine is a cellular automaton designed to simulate the long term processes of biological evolution. It allows organisms to eat, reproduce, mutate, and adapt.
-Unlike genetic algorithms, the life engine does not manually select the most "fit" organism for some given task, but rather allows true natural selection to 
-run its course. Organisms that survive, successfully produce offspring, and out-compete their neighbors naturally propogate througout the environment.
+### Soil and fertility
+- Every grid cell has a **fertility** (0 to 10) and a **fertility cap**. `src/Grid/SoilLayout.js` lays out the caps
+  from seeded Perlin noise: cells above a threshold are fertile patches (cap 10), the rest are permanently infertile
+  pathways (cap 0). The **soil seed**, **density** (threshold) and **patch size** (resolution) fix the layout, so the
+  same seeds on the same grid always give the same map, in the browser and headless.
+- **Plants need fertile soil.** A plant (a producer that cannot move) can only be born or placed where the average
+  fertility under its body is at least **Min plant fertility** (default 7). Mobile organisms can go anywhere.
+- **Soil heals slowly.** Each tick, every unoccupied cell below its cap has a **Soil regen chance** (a percent per
+  tick) of gaining **Soil regen amount** fertility. Infertile pathways never recover.
+- Burrowing is the only thing that lowers fertility (see below).
 
-This is the second version of the [original evolution simulator](https://github.com/MaxRobinsonTheGreat/EvolutionSimulator), which I started in high school.
+### Predator and prey roles: tags and altered brains
+- **Tagging.** Every organism carries a role: **plant** (producer, no mover), **predator** (killer cell, no producer)
+  or **prey** (everything else). Roles are inherited. When a prey first gains a killer cell it flips a coin
+  (**Prey killer becomes predator**, default 0.5) to become a predator or stay prey. A switch of role always founds a
+  new species. The seeded species (`seeded species/*.json`: `predator`, `prey_small`, `prey_large`, `plant`) name
+  their lineages, so descendants can be traced back.
+- **Who eats what.** Predators cannot eat food and only kill prey. A kill gives one food unit per prey body cell.
+  Dead predators and prey leave empty cells; dead plants still leave food. Predators live longer
+  (**Predator Lifespan Multiplier**, default 2).
+- **Altered brains** (`src/Organism/Perception/Brain.js`). Predators and prey no longer use the evolved
+  cell-type decision maps:
+  - Predators chase the nearest prey they can see (not hidden prey), and keep their heading three times longer once
+    prey leave sight.
+  - Prey retreat from the nearest predator they see, or **burrow** if they have a claw (see below). With no predator
+    in sight they chase the nearest food.
+  - Plants and untagged organisms keep the original evolvable brain.
+- **Movement speed.** Predators move every **Predator Movement Interval** updates (default 3), clawed prey every
+  **Burrower Movement Interval** updates (default 1), and prey take at most one step per update.
+
+### Claw cells and burrowing
+- A new body cell, the **claw** (`src/Organism/Cell/BodyCells/ClawCell.js`). No seeded organism has one; it can only
+  appear by mutation. **Claw cells can evolve** switches it off for the no-claw control.
+- **Burrowing.** A clawed prey that sees a predator digs underground for **hideDuration** ticks (100), as long as
+  the soil under it has at least **minBurrowFertility** (1) on average. While hidden it is invisible to predators,
+  doesn't move and, with **Don't age while hidden**, doesn't age. With **Stay hidden near predators** it stays down
+  for up to another 100 ticks while a predator is within range. **Only burrow when predator is close** (off in our
+  runs) makes it run from predators that are further away.
+- **The cost.** Every burrow removes **hideFertilityCost** (10) fertility from each cell under the prey's body, down
+  to 0. Setting it to 0 gives the free-burrowing control. **Claw cells are free** (off in our runs) makes claws
+  cost nothing to reproduce.
+
+### Logging
+The Statistics tab can export everything as CSV (**All**, plus auto-save). The headless runner writes the same files.
+Samples are taken every 100 ticks.
+- `timeseries`: population, species, mutation rate, average cells, fitness, lifespan at death, growth, birth and
+  death rates, burrowers and clawed organisms, hidden organisms and burrows, mean soil fertility
+  (`soil_mean`) and the share of degraded soil (`soil_degraded_frac`), and the average count of each cell type.
+- `groups_log`: the same measures per **role** (plants, predators, prey with and without a claw) and per
+  **lineage**: population, births, deaths, fitness, lifespan at death, birth, death and growth rates, burrows, and
+  counts with a claw, ever burrowed and hidden.
+- `species_log` and `species_summary`: per-species series, and one row per species (life span, peak population,
+  fitness, burrows, cell make-up).
+- `key_moments`: events with their tick: the claw evolving, the first burrow, the last clawed organism dying,
+  the soil losing 25, 50 and 75% of its fertility, species becoming established or extinct, total extinction, and
+  settings changed mid-run.
+- `run_config`: every setting of the run, the grid size, organisms placed and the fertile share of the soil.
+
+Definitions:
+- **Growth rate:** (births − deaths) / average population over the interval.
+- **Fitness:** offspring per organism that died.
+
+The Statistics tab also charts growth, fitness, lifespan and population by role or lineage, and burrows against soil
+fertility.
 
 
-# How to Run and Modify the Code
+# How to Run the Code
+
+### In the browser
  - [Install node and npm](https://nodejs.org/en/download/)
  - Download or clone this repository
- - Open a terminal or powershell comand prompt, go to the repository and run `npm install`
+ - Open a terminal or PowerShell prompt, go to the repository and run `npm install`
  - Run `npm run build` (or `npm run build-watch` for a better developer experience)
    - If you get a `Can't resolve jquery` error message run `npm install --save jquery`
  - Open `dist/index.html` in your browser. The simulation should start running.
+ - Set up a run in the **Run Setup** tab (see [Run Setup](#run-setup)), press **Apply & Reset World**, and export the
+   logs from the Statistics tab.
 
-To load custom creations (found in `/dist/assets`), you must have a simple web server that serves all files in the dist directory. I do this with python:
+To load custom creations (found in `/dist/assets`), you must have a simple web server that serves all files in the dist directory. One way to do this is with Python:
  - [Install python](https://www.python.org/downloads/)
  - run `python -m http.server --directory dist` from the repository root
  - Open `http://localhost:8000/` in your browser
+
+### Our experiments
+The final experiments are in `headless/experiments/`. They all start from the same seeded species, and claws start
+absent:
+- `final_runs.json`: 540 runs over 15 soil maps (3 layouts × 5 soil seeds), soil regen 1–10%, 3 replicates, three sets.
+- `slow_regen_main.json`, `slow_regen_noclaw.json`, `slow_regen_nocost.json`: the same design at soil regen
+  0.01–0.1% per tick, the results in our presentation.
+
+The three sets are:
+- **main:** claws can evolve and burrowing costs soil.
+- **noclaw:** claws can never evolve.
+- **nocost:** burrowing is free.
+
+Run them with `node headless/batch.js headless/experiments/slow_regen_main.json` (no build needed; tested with Node 24).
+Logs go to `Observations/` (not tracked by git). Runs are 250,000 ticks long, so a full set takes several hours.
+
+The analysis scripts need Python 3 with `numpy`, `pandas`, `matplotlib` and `scipy`; the slide scripts also need
+`pypdf` and `reportlab`:
+- `analysis/plot_metrics.py`: per-run and averaged plots of any batch.
+- `analysis/final_analysis.py`: extinction tables and figures for `final_runs`.
+- `analysis/slow_regen_analysis.py Observations/slow-regen-runs`: the slow-regen report (extinctions, soil,
+  collapse pathways, growth and fitness, claw outcomes).
+- `analysis/slow_regen_deck.py`, `analysis/growth_rate_slide.py`: figures and slides for the presentation.
 
 ### Headless runs
 The simulation can run without a browser, which is much faster and lets several runs go at once. It uses the same code in `src/`, leaving out only the drawing, and writes the same CSV logs as the Statistics tab's **All** export, so `analysis/plot_metrics.py` reads them unchanged. Only the starting layout is seeded; each run is still random, as in the browser.
@@ -67,7 +162,7 @@ Organisms are structures of cells that eat food, reproduce, and die.
 When an organism dies, every cell in the grid that was occupied by a cell in its body will be changed to food.
 Their lifespan is calculated by multiplying the number of cells they have by the hyperparameter `Lifespan Multiplier`. Predators additionally multiply that lifespan by the `Predator Lifespan Multiplier` hyperparameter, which defaults to 2; other organisms survive for the calculated number of ticks unless killed by another organism.
 When touched by a killer cell, an organism will take damage. Once it has taken as much damage as it has cells in its body, it will die. If the hyperparameter `One touch kill` is on, an organism will immediatly die when touched by a killer cell.
-Predators cannot eat food or kill non-prey organisms. Killing prey gives a predator one food unit per prey body cell, matching the food yield of eating food from a plant of the same size. Predators move according to the `Predator Movement Interval` hyperparameter (default 3 updates), chase prey they see through their normal directional eyes, and keep their heading longer after prey leave sight. Prey take at most one movement step per update, chase visible food when no predator is nearby, and retreat from visible predators or hide if they can burrow. Burrowing prey move according to the `Burrower Movement Interval` hyperparameter (default 3 updates).
+Predators cannot eat food or kill non-prey organisms. Killing prey gives a predator one food unit per prey body cell, matching the food yield of eating food from a plant of the same size. Predators move according to the `Predator Movement Interval` hyperparameter (default 3 updates), chase prey they see through their normal directional eyes, and keep their heading longer after prey leave sight. Prey take at most one movement step per update, chase visible food when no predator is nearby, and retreat from visible predators or hide if they can burrow. Burrowing prey move according to the `Burrower Movement Interval` hyperparameter (default 1, every update).
 Organisms with a killer cell and no producer cell are tagged as predators. When a prey, with or without a claw, first develops a killer cell, it has a 50% chance to become a predator and a 50% chance to remain prey (the `Prey killer becomes predator` chance in Run Setup). Its offspring keep whichever role it ended up with. Every other organism that is not a plant (a producer that cannot move) is tagged as prey, so organisms that evolve to move, or predators that lose their killer cells, can be hunted. An offspring that switches between predator and non-predator always founds a new species, whatever its body.
 
 ## Run Setup
@@ -78,28 +173,43 @@ Each run's starting configuration (the soil layout and the seeded organisms), pl
 
 Settings marked *reset* only take effect when the world resets, because the soil and the starting organisms are placed then. Settings marked *live* take effect immediately. If one is changed partway through a run, the change is logged as a key moment, since the run no longer matches its starting configuration.
 
-| Setting | Default | When | What it means |
-|---|---|---|---|
-| Run label | (empty) | live | A name for the configuration. It is written to the logs and used in plot legends and for averaged results. |
-| Soil seed | 42 | reset | Fixes the soil layout. The same seed on the same grid size always gives the same layout. |
-| Soil density (patch threshold) | 0 | reset | The noise cutoff for fertile soil, from -1 to 1. Raise it for less, sparser fertile soil with wider infertile pathways; lower it for more, better connected fertile soil. 0 makes about half the grid fertile. |
-| Soil patch size (resolution) | 20 | reset | How many noise bumps are stretched across the grid. Lower values give fewer, bigger patches; higher values give many small, scattered ones. |
-| Soil regen chance (%) | 0.05 | live | The percent chance each tick that an unoccupied soil cell regains fertility, up to its cap. |
-| Soil regen amount | 1 | live | How much fertility a soil cell regains each time it regenerates. |
-| Min plant fertility | 7 | live | The average soil fertility needed under a plant (a producer that cannot move) for it to be born or placed there. |
-| Placement seed | 1 | reset | Fixes where the starting organisms are placed. Change it to get replicates of the same configuration. |
-| Predators | 10 | reset | How many seeded predators to place. |
-| Prey (small) | 10 | reset | How many of the original burrowing prey, without the claw, to place (`seeded species/prey_small.json`). |
-| Prey (large) | 10 | reset | How many of the larger prey to place (`seeded species/prey_large.json`). Neither seeded prey has a claw, so any claw has to evolve. |
-| Plants | 39 | reset | How many seeded plants to place. Plants only go where the soil is fertile enough for them to grow. |
-| Prey killer becomes predator (chance) | 0.5 | live | When a prey (with or without a claw) gains its first killer cell, the chance that it becomes a predator instead of staying prey. 0.5 is a coin flip. 1 turns the coin flip off, so prey with a killer cell always become predators. 0 keeps them prey. |
-| Claw cells can evolve | on | live | Off removes claws from the cell types a mutation can add, so claws never evolve. This is the no-claw control. |
-| Claw cells are free | on | live | Claw cells don't count toward the food needed to reproduce. They still add lifespan and health, so claws can spread even when they are never used for burrowing. |
-| Don't age while hidden | on | live | Ticks spent underground don't count toward an organism's lifespan. |
-| Stay hidden near predators | on | live | A hidden organism stays underground while a predator is within the stay hidden range, for up to another hide duration. |
-| Stay hidden range | 6 | live | How close (in cells) a predator has to be to keep a hidden organism underground. |
-| Only burrow when predator is close | on | live | Prey with a claw only burrow when the predator they see is within the burrow trigger range. Further away, they run instead. |
-| Burrow trigger range | 8 | live | How close (in cells) a seen predator has to be before prey with a claw burrow. |
+| Setting | Default | Final runs | When | What it means |
+|---|---|---|---|---|
+| Run label | (empty) | `<set>-<layout>` | live | A name for the configuration. It is written to the logs and used in plot legends and for averaged results. |
+| Soil seed | 42 | 42, 7, 123, 2024, 99 | reset | Fixes the soil layout. The same seed on the same grid size always gives the same layout. |
+| Soil density (patch threshold) | 0 | -0.1 / 0 / 0.1 (dense / medium / sparse) | reset | The noise cutoff for fertile soil, from -1 to 1. Raise it for less, sparser fertile soil with wider infertile pathways; lower it for more, better connected fertile soil. 0 makes about half the grid fertile. |
+| Soil patch size (resolution) | 20 | 10 / 20 / 40 (dense / medium / sparse) | reset | How many noise bumps are stretched across the grid. Lower values give fewer, bigger patches; higher values give many small, scattered ones. |
+| Soil regen chance (%) | 0.05 | 0.01, 0.025, 0.05, 0.1 | live | The percent chance each tick that an unoccupied soil cell regains fertility, up to its cap. |
+| Soil regen amount | 1 | 1 | live | How much fertility a soil cell regains each time it regenerates. |
+| Min plant fertility | 7 | 7 | live | The average soil fertility needed under a plant (a producer that cannot move) for it to be born or placed there. |
+| Placement seed | 1 | 1 (3 replicates each) | reset | Fixes where the starting organisms are placed. Change it to get replicates of the same configuration. |
+| Predators | 10 | 10 | reset | How many seeded predators to place. |
+| Prey (small) | 10 | 10 | reset | How many of the original burrowing prey, without the claw, to place (`seeded species/prey_small.json`). |
+| Prey (large) | 10 | 10 | reset | How many of the larger prey to place (`seeded species/prey_large.json`). Neither seeded prey has a claw, so any claw has to evolve. |
+| Plants | 39 | 39 | reset | How many seeded plants to place. Plants only go where the soil is fertile enough for them to grow. |
+| Prey killer becomes predator (chance) | 0.5 | 0.5 | live | When a prey (with or without a claw) gains its first killer cell, the chance that it becomes a predator instead of staying prey. 0.5 is a coin flip. 1 turns the coin flip off, so prey with a killer cell always become predators. 0 keeps them prey. |
+| Claw cells can evolve | on | on (off in noclaw) | live | Off removes claws from the cell types a mutation can add, so claws never evolve. This is the no-claw control. |
+| Claw cells are free | off | off | live | On makes claw cells not count toward the food needed to reproduce. They still add lifespan and health, so claws could then spread even when they are never used for burrowing. |
+| Don't age while hidden | on | on | live | Ticks spent underground don't count toward an organism's lifespan. |
+| Stay hidden near predators | on | on | live | A hidden organism stays underground while a predator is within the stay hidden range, for up to another hide duration. |
+| Stay hidden range | 6 | 6 | live | How close (in cells) a predator has to be to keep a hidden organism underground. |
+| Only burrow when predator is close | off | off | live | On makes prey with a claw only burrow when the predator they see is within the burrow trigger range, and run when it is further away. Off, they burrow whenever they see a predator. |
+| Burrow trigger range | 8 | 8 (unused) | live | How close (in cells) a seen predator has to be before prey with a claw burrow, when the setting above is on. |
+
+The defaults are the main set of our final runs (`headless/experiments/slow_regen_main.json`) on the medium layout, so
+**Reset to defaults** gives one of those runs. The **Final runs** column shows the values those runs used; where it
+lists several, every combination was run. The noclaw set turns **Claw cells can evolve** off, and the nocost set sets
+the Evolution Control **hideFertilityCost** to 0. The other Evolution Controls the runs depend on are also at their
+defaults:
+- **Predator Lifespan Multiplier:** 2.
+- **Predator Movement Interval:** 3.
+- **Burrower Movement Interval:** 1.
+- **hideDuration:** 100.
+- **hideFertilityCost:** 10.
+- **minBurrowFertility:** 1.
+
+The grid is 384 × 193 cells with cell size 5, and each run is 250,000 ticks. The full parameter list is in
+`experiment params/slow_regen_parameters.json`.
 
 The starting organisms are placed at seeded random free spots, in this order: predators, small prey, large prey, then plants. The seeded species are named after their files in `seeded species/` (`predator`, `prey_small`, `prey_large`, `plant`), and their descendants carry that name as their lineage. If the grid is too crowded, fewer may be placed than asked for; the run config records how many were actually placed. Only the starting layout is seeded. The simulation itself still varies from run to run, so repeating a configuration with different placement seeds gives independent replicates.
 
