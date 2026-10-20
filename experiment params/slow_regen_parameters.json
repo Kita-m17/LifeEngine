@@ -1,0 +1,153 @@
+{
+  "experiment": "slow-regen-runs (the final runs)",
+  "experiment_file": [
+    "headless/experiments/slow_regen_main.json",
+    "headless/experiments/slow_regen_noclaw.json",
+    "headless/experiments/slow_regen_nocost.json"
+  ],
+  "output": "Observations/slow-regen-runs/<set>-<layout>_soilRegenRate=<rate>_seed1_soil<soil seed>_rep<1-3>/",
+  "run_setup_defaults": "src/EnvironmentParams.js and src/Hyperparameters.js default to the main set on the medium layout (soil seed 42, soil regen 0.05%), so Reset to defaults in the browser gives one of these runs.",
+  "design": {
+    "map": "soil seed x layout: 5 soil seeds x 3 layouts = 15 maps",
+    "map_type": "map x soil regen chance: 15 maps x 4 regen chances = 60 map types",
+    "replicates": "3 per map type, same placement (placement seed 1), so replicates differ only in the run itself",
+    "runs_per_set": 180,
+    "sets": 3,
+    "total_runs": 540,
+    "ticks_per_run": 250000,
+    "grid": {
+      "cols": 384,
+      "rows": 193,
+      "cell_size": 5
+    }
+  },
+  "varied": {
+    "layout": {
+      "dense": {
+        "soilPatchThreshold": -0.1,
+        "soilPatchResolution": 10,
+        "meaning": "dense soil, large patches"
+      },
+      "medium": {
+        "soilPatchThreshold": 0,
+        "soilPatchResolution": 20,
+        "meaning": "medium density, medium patches"
+      },
+      "sparse": {
+        "soilPatchThreshold": 0.1,
+        "soilPatchResolution": 40,
+        "meaning": "sparse soil, small patches"
+      }
+    },
+    "soilSeed": [
+      42,
+      7,
+      123,
+      2024,
+      99
+    ],
+    "soilRegenRate_percent_per_tick": [
+      0.01,
+      0.025,
+      0.05,
+      0.1
+    ],
+    "soilRegenRate_note": "soilRegenRate is already a percent, so 0.05 means a 0.05% chance per tick. A burrowed cell needs 7 / (rate / 100) ticks to support plants again: 70,000 ticks at 0.01%, 7,000 at 0.1%."
+  },
+  "sets": {
+    "main": {
+      "clawCellsEnabled": true,
+      "hideFertilityCost": 10,
+      "meaning": "claws can evolve, burrowing costs soil"
+    },
+    "noclaw": {
+      "clawCellsEnabled": false,
+      "hideFertilityCost": 10,
+      "meaning": "control: claws can never evolve"
+    },
+    "nocost": {
+      "clawCellsEnabled": true,
+      "hideFertilityCost": 0,
+      "meaning": "claws can evolve, burrowing is free for the soil"
+    }
+  },
+  "fixed": {
+    "minPlantFertility": 7,
+    "predatorLifespanMultiplier": 2,
+    "predatorMoveInterval": 3,
+    "burrowerMoveInterval": 1,
+    "hideFertilityCost": "10 (0 in the nocost set)",
+    "clawCellsFree": false,
+    "burrowOnlyWhenClose": false,
+    "hibernateWhileHidden": true,
+    "stayHiddenNearPredator": true,
+    "preyPredatorChance": 0.5,
+    "placementSeed": 1,
+    "clawCellsEnabled": "true (false in the noclaw set)",
+    "numPredators": 10,
+    "numPrey": 10,
+    "numLargePrey": 10,
+    "numPlants": 39
+  },
+  "seeded_organisms": {
+    "predator": {
+      "count": 10,
+      "file": "seeded species/predator.json"
+    },
+    "prey_small": {
+      "count": 10,
+      "file": "seeded species/prey_small.json",
+      "note": "the original burrower without its claw"
+    },
+    "prey_large": {
+      "count": 10,
+      "file": "seeded species/prey_large.json",
+      "note": "new larger prey, no claw"
+    },
+    "plant": {
+      "count": 39,
+      "file": "seeded species/plant.json"
+    },
+    "note": "no seeded organism has a claw; any claw has to evolve"
+  },
+  "unchanged_defaults": {
+    "soilRegenAmount": 1,
+    "stayHiddenRange": 6,
+    "burrowTriggerRange": 8,
+    "species_threshold": 3,
+    "lifespanMultiplier": 150,
+    "foodProdProb": 5,
+    "addProb": 25,
+    "changeProb": 25,
+    "removeProb": 25,
+    "brainMutationChance": 25,
+    "mutationSymmetryChance": 10,
+    "useGlobalMutability": false,
+    "rotationEnabled": true,
+    "foodBlocksReproduction": true,
+    "moversCanProduce": false,
+    "instaKill": false,
+    "dontKillSameSpecies": false,
+    "lookRange": 30,
+    "seeThroughSelf": false,
+    "evolveIndependentEyeDecisions": true,
+    "foodDropProb": 0,
+    "extraMoverFoodCost": 0,
+    "hideDuration": 100,
+    "minBurrowFertility": 1,
+    "maxFertility": 10,
+    "maxOrganisms": -1
+  },
+  "earlier_batch": {
+    "experiment": "final-runs",
+    "experiment_file": "headless/experiments/final_runs.json",
+    "output": "Observations/final-runs/<set>-<layout>_soilRegenRate=<rate>_seed1_soil<soil seed>_rep<1-3>/",
+    "soilRegenRate_percent_per_tick": [
+      1,
+      2.5,
+      5,
+      10
+    ],
+    "note": "Same design and settings as the final runs, but the soil healed too fast (a burrow recovered in 70-700 ticks) for burrow damage to build up. Kept for comparison."
+  }
+}

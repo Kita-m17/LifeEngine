@@ -1,4 +1,5 @@
 const Hyperparams = require('../../Hyperparameters.js');
+const EnvironmentParams = require("../../EnvironmentParams");
 
 // A cell state is used to differentiate type and render the cell
 class CellState{
@@ -106,12 +107,15 @@ const CellStates = {
     defineLists() {
         this.all = [this.empty, this.food, this.wall, this.mouth, this.producer, this.mover, this.killer, this.armor, this.claw, this.eye]
         this.living = [this.mouth, this.producer, this.mover, this.killer, this.armor, this.claw, this.eye];
+        this.living_without_claw = this.living.filter(state => state !== this.claw);
     },
     getRandomName: function() {
         return this.all[Math.floor(Math.random() * this.all.length)].name;
     },
+    // the cell type a mutation adds or changes to. With clawCellsEnabled off, claws are never picked, so they can't evolve
     getRandomLivingType: function() {
-        return this.living[Math.floor(Math.random() * this.living.length)];
+        const types = EnvironmentParams.clawCellsEnabled ? this.living : this.living_without_claw;
+        return types[Math.floor(Math.random() * types.length)];
     }
 }
 

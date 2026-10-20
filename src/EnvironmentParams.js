@@ -2,7 +2,8 @@
 // changed between runs. Every value is exported with the logs (run_config CSV) so runs can be compared, and runs that
 // only differ in their seeds can be averaged as replicates.
 //
-// Change a default here or in the Run Setup tab. "reset" settings take effect the next time the world resets (the soil
+// The defaults are the main set of the group's final (slow-regen) runs, headless/experiments/slow_regen_main.json,
+// on the medium layout. Change a default here or in the Run Setup tab. "reset" settings take effect the next time the world resets (the soil
 // and the starting organisms are placed then); "live" settings take effect straight away.
 //
 // The layout is deterministic for a given seed AND grid size: the soil noise is stretched over the grid, so the same
@@ -34,15 +35,19 @@ const FIELDS = [
     {key: 'placementSeed', group: 'Organisms', type: 'int', default: 1, applies: 'reset', label: 'Placement seed',
         title: 'Fixes where the starting organisms are placed. Change it for replicates of the same configuration.'},
     {key: 'numPredators', group: 'Organisms', type: 'int', default: 10, min: 0, step: 1, applies: 'reset', label: 'Predators'},
-    {key: 'numPrey', group: 'Organisms', type: 'int', default: 10, min: 0, step: 1, applies: 'reset', label: 'Prey (no claw)'},
-    {key: 'numClawPrey', group: 'Organisms', type: 'int', default: 10, min: 0, step: 1, applies: 'reset', label: 'Prey (with claw)'},
+    {key: 'numPrey', group: 'Organisms', type: 'int', default: 10, min: 0, step: 1, applies: 'reset', label: 'Prey (small)',
+        title: 'The original burrowing prey without its claw (seeded species/prey_small.json).'},
+    {key: 'numLargePrey', group: 'Organisms', type: 'int', default: 10, min: 0, step: 1, applies: 'reset', label: 'Prey (large)',
+        title: 'The larger prey with no claw (seeded species/prey_large.json).'},
     {key: 'numPlants', group: 'Organisms', type: 'int', default: 39, min: 0, step: 1, applies: 'reset', label: 'Plants'},
 
     // mechanics
-    {key: 'clawPredatorChance', group: 'Mechanics', type: 'float', default: 0.5, min: 0, max: 1, step: 0.1, applies: 'live',
-        label: 'Clawed killer becomes predator (chance)',
-        title: 'When a clawed organism gains its first killer cell, the chance it becomes a predator instead of staying prey. 0.5 is the coin flip; 1 turns the coin flip off (clawed organisms become predators like any other); 0 keeps them prey.'},
-    {key: 'clawCellsFree', group: 'Mechanics', type: 'bool', default: true, applies: 'live', label: 'Claw cells are free',
+    {key: 'preyPredatorChance', group: 'Mechanics', type: 'float', default: 0.5, min: 0, max: 1, step: 0.1, applies: 'live',
+        label: 'Prey killer becomes predator (chance)',
+        title: 'When a prey (with or without a claw) gains its first killer cell, the chance it becomes a predator instead of staying prey. 0.5 is the coin flip; 1 turns the coin flip off (prey with a killer cell always become predators); 0 keeps them prey.'},
+    {key: 'clawCellsEnabled', group: 'Mechanics', type: 'bool', default: true, applies: 'live', label: 'Claw cells can evolve',
+        title: 'Off removes claws from the cell types mutations can add, so claws never evolve (the no-claw control).'},
+    {key: 'clawCellsFree', group: 'Mechanics', type: 'bool', default: false, applies: 'live', label: 'Claw cells are free',
         title: 'Claw cells do not count toward the food an organism needs to reproduce (they still add lifespan and health).'},
     {key: 'hibernateWhileHidden', group: 'Mechanics', type: 'bool', default: true, applies: 'live', label: "Don't age while hidden",
         title: 'Ticks spent hidden underground do not count toward how long an organism can live.'},
@@ -50,7 +55,7 @@ const FIELDS = [
         title: 'A hidden organism stays underground while a predator is within the range below, for up to another hide duration.'},
     {key: 'stayHiddenRange', group: 'Mechanics', type: 'int', default: 6, min: 1, max: 50, step: 1, applies: 'live', label: 'Stay hidden range',
         title: 'How close (in cells) a predator has to be to keep a hidden organism underground.'},
-    {key: 'burrowOnlyWhenClose', group: 'Mechanics', type: 'bool', default: true, applies: 'live', label: 'Only burrow when predator is close',
+    {key: 'burrowOnlyWhenClose', group: 'Mechanics', type: 'bool', default: false, applies: 'live', label: 'Only burrow when predator is close',
         title: 'Prey with a claw only burrow when the predator they see is within the range below. Further away, they run instead.'},
     {key: 'burrowTriggerRange', group: 'Mechanics', type: 'int', default: 8, min: 1, max: 50, step: 1, applies: 'live', label: 'Burrow trigger range',
         title: 'How close (in cells) a seen predator has to be before prey with a claw burrow.'},

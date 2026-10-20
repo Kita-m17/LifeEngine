@@ -202,6 +202,16 @@ class Brain {
         if (this.decisions.length > 0) {
             this.num_states = this.decisions[0].length;
         }
+        // brains saved before a cell type existed (e.g. without claw) get a neutral decision for it, so mutate() can't
+        // pick a missing entry
+        for (let eye of this.decisions) {
+            for (let state of eye) {
+                for (let cell of CellStates.all) {
+                    if (!state[cell.name])
+                        state[cell.name] = {decision: Decision.neutral, state: 0};
+                }
+            }
+        }
     }
 
     randomizeDecisions() {

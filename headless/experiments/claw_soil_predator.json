@@ -1,0 +1,22 @@
+{
+  "name": "claw-soil-predator",
+  "description": "Claw benefits on as the baseline; each other configuration changes one thing from it. Defaults match the 'claws free' browser run.",
+  "ticks": 250000,
+  "seeds": [1, 2, 3, 4, 5],
+  "grid": {"cols": 384, "rows": 193, "cell_size": 5},
+  "base": {
+    "clawCellsFree": true,
+    "hibernateWhileHidden": true,
+    "stayHiddenNearPredator": true,
+    "soilRegenRate": 0.05,
+    "predatorMoveInterval": 3
+  },
+  "configs": [
+    {"label": "baseline"},
+    {"label": "claw-off", "set": {"clawCellsFree": false, "hibernateWhileHidden": false, "stayHiddenNearPredator": false}},
+    {"label": "soil-slow", "set": {"soilRegenRate": 0.01}},
+    {"label": "soil-fast", "set": {"soilRegenRate": 0.2}},
+    {"label": "pred-2", "set": {"predatorMoveInterval": 2}},
+    {"label": "pred-1", "set": {"predatorMoveInterval": 1}}
+  ]
+}

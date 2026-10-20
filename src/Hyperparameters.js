@@ -3,7 +3,7 @@ const Neighbors = require("./Grid/Neighbors");
 const Hyperparams = {
     setDefaults: function() {
         this.lifespanMultiplier = 150;
-        this.predatorLifespanMultiplier = 3;
+        this.predatorLifespanMultiplier = 2;
         this.predatorMoveInterval = 3;
         this.burrowerMoveInterval = 1;
         this.foodProdProb = 5;

@@ -77,11 +77,12 @@ class Organism {
             this.is_predator = true;
             return;
         }
-        // is_prey here is still the inherited flag: a clawed prey that kept its killer cells stays prey
-        if (!previousRoleState && (this.is_predator || (this.is_prey && this.anatomy.has_claw)))
+        // is_prey here is still the inherited flag: a prey that kept its killer cells stays prey
+        if (!previousRoleState && (this.is_predator || this.is_prey))
             return;
-        if (this.anatomy.has_claw)
-            this.is_predator = Math.random() < EnvironmentParams.clawPredatorChance;
+        // a prey that gains its first killer cell flips a coin to become a predator or stay prey (with or without a claw)
+        if (this.is_prey)
+            this.is_predator = Math.random() < EnvironmentParams.preyPredatorChance;
         else
             this.is_predator = true;
     }

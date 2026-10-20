@@ -1,0 +1,34 @@
+{
+  "name": "slow-regen-runs",
+  "description": "Repeat of final-runs (headless/experiments/final_runs.json) with the soil regen chance below 1% per tick: 0.01, 0.025, 0.05, 0.1 (% per tick; soilRegenRate is already a percentage, so 0.05 means 0.05%, not 5%). Everything else identical to final-runs. This file is the nocost set: claws can evolve, burrowing is free for the soil (hideFertilityCost 0): 15 maps (5 soil seeds x 3 layouts) x 4 regen chances x 3 replicates = 180 runs. The three sets (slow_regen_main/noclaw/nocost.json) write to the same folder, Observations/slow-regen-runs/, so they can run in parallel on different machines and be merged afterwards.",
+  "ticks": 250000,
+  "seeds":     [1, 1, 1, 1, 1],
+  "soilSeeds": [42, 7, 123, 2024, 99],
+  "replicates": 3,
+  "grid": {"cols": 384, "rows": 193, "cell_size": 5},
+  "base": {
+    "minPlantFertility": 7,
+    "predatorLifespanMultiplier": 2,
+    "predatorMoveInterval": 3,
+    "burrowerMoveInterval": 1,
+    "hideFertilityCost": 10,
+    "clawCellsEnabled": true,
+    "clawCellsFree": false,
+    "burrowOnlyWhenClose": false,
+    "hibernateWhileHidden": true,
+    "stayHiddenNearPredator": true,
+    "preyPredatorChance": 0.5,
+    "numPredators": 10,
+    "numPrey": 10,
+    "numLargePrey": 10,
+    "numPlants": 39
+  },
+  "vary": {
+    "soilRegenRate": [0.01, 0.025, 0.05, 0.1]
+  },
+  "configs": [
+    {"label": "nocost-dense",   "set": {"soilPatchThreshold": -0.1, "soilPatchResolution": 10, "hideFertilityCost": 0}},
+    {"label": "nocost-medium",  "set": {"soilPatchThreshold": 0, "soilPatchResolution": 20, "hideFertilityCost": 0}},
+    {"label": "nocost-sparse",  "set": {"soilPatchThreshold": 0.1, "soilPatchResolution": 40, "hideFertilityCost": 0}}
+  ]
+}

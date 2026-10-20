@@ -5,6 +5,8 @@ const Directions = require("./Directions");
 const Hyperparams = require("../Hyperparameters");
 const EnvironmentParams = require("../EnvironmentParams");
 const {mulberry32} = require("../Utils/SeededPerlin");
+const SMALL_PREY = require("../../seeded species/prey_small.json");
+const LARGE_PREY = require("../../seeded species/prey_large.json");
 
 class RandomOrganismGenerator {
 
@@ -57,17 +59,19 @@ class RandomOrganismGenerator {
     // places the starting organisms from EnvironmentParams at seeded random free spots, so the same placement seed (on
     // the same grid and soil) always gives the same layout. Plants only go where the soil lets them grow. add() puts
     // each organism in the world straight away so later ones can't overlap it. Returns how many of each were placed,
-    // which can be fewer than asked for if the grid is too crowded.
+    // which can be fewer than asked for if the grid is too crowded. add() also gets the species name to give each
+    // seeded species.
     static generateSeeded(env, add) {
         const rand = mulberry32(EnvironmentParams.placementSeed);
         const roles = [
-            ['predators', EnvironmentParams.numPredators, RandomOrganismGenerator.createPredator],
-            ['claw_prey', EnvironmentParams.numClawPrey, RandomOrganismGenerator.createClawPrey],
-            ['prey', EnvironmentParams.numPrey, RandomOrganismGenerator.createPrey],
-            ['plants', EnvironmentParams.numPlants, RandomOrganismGenerator.createPlant],
+            // role, count, constructor, species name (the file names in seeded species/)
+            ['predators', EnvironmentParams.numPredators, RandomOrganismGenerator.createPredator, 'predator'],
+            ['prey', EnvironmentParams.numPrey, RandomOrganismGenerator.createSmallPrey, 'prey_small'],
+            ['large_prey', EnvironmentParams.numLargePrey, RandomOrganismGenerator.createLargePrey, 'prey_large'],
+            ['plants', EnvironmentParams.numPlants, RandomOrganismGenerator.createPlant, 'plant'],
         ];
         const placed = {};
-        for (const [role, count, create] of roles) {
+        for (const [role, count, create, species_name] of roles) {
             placed[role] = 0;
             for (let i = 0; i < count; i++) {
                 for (let attempt = 0; attempt < RandomOrganismGenerator.placementAttempts; attempt++) {
@@ -80,7 +84,7 @@ class RandomOrganismGenerator {
                         org.rotation = rotation;
                     org.direction = direction;
                     if (org.isClear(col, row) && org.canGrowAt(col, row)) {
-                        add(org);
+                        add(org, species_name);
                         placed[role]++;
                         break;
                     }
@@ -126,37 +130,25 @@ class RandomOrganismGenerator {
         return plant;
     }
 
-    // prey around a central mover, the same body as the burrowing prey minus the claw:
+    // the original burrowing prey without its claw, as saved in seeded species/prey_small.json:
     //         mouth
     //  mouth  mover  eye(looking up)
-    static createPrey(env, col, row, direction=Directions.left) {
-        const prey = RandomOrganismGenerator.newPrey(env, col, row, direction);
-        prey.anatomy.addDefaultCell(CellStates.mover, 0, 0);
-        const preyEye = prey.anatomy.addDefaultCell(CellStates.eye, 1, 0);
-        preyEye.direction = Directions.up;
-        prey.anatomy.addDefaultCell(CellStates.mouth, 0, -1);
-        prey.anatomy.addDefaultCell(CellStates.mouth, -1, 0);
-        prey.brain.decisions[CellStates.killer.name] = Brain.Decision.retreat;
-        return prey;
+    static createSmallPrey(env, col, row) {
+        return RandomOrganismGenerator.fromSaved(SMALL_PREY, env, col, row);
     }
 
-    // cross-shaped burrowing prey: the regular prey with a claw underneath
-    //         mouth
-    //  mouth  mover  eye(looking up)
-    //         claw
-    static createClawPrey(env, col, row) {
-        const prey = RandomOrganismGenerator.createPrey(env, col, row, Directions.right);
-        prey.anatomy.addDefaultCell(CellStates.claw, 0, 1);
-        return prey;
+    // a larger prey with no claw (two eyes, six mouths around a mover), saved in seeded species/prey_large.json
+    static createLargePrey(env, col, row) {
+        return RandomOrganismGenerator.fromSaved(LARGE_PREY, env, col, row);
     }
 
-    static newPrey(env, col, row, direction) {
-        const prey = new Organism(col, row, env);
-        prey.is_prey = true;
-        prey.move_range = 4;
-        prey.move_speed = 1;
-        prey.direction = direction;
-        return prey;
+    // an organism saved from the editor (body, brain, mutability, birth distance), placed at col, row
+    static fromSaved(raw, env, col, row) {
+        const org = new Organism(col, row, env);
+        org.loadRaw(raw);
+        org.c = col;
+        org.r = row;
+        return org;
     }
 
     static trySpawnCell(organism, x, y, spawnChance) {
