@@ -1,0 +1,45 @@
+services:
+  # Production build: http://localhost:27181
+  web:
+    build:
+      context: .
+      target: web
+    ports:
+      - "${PORT:-27181}:80"
+    restart: unless-stopped
+
+  # Dev mode: `docker compose up dev`, then http://localhost:8001
+  # Rebuilds dist/js/bundle.js whenever a file in src/ changes; refresh the page to see it.
+  dev-build:
+    profiles: [dev]
+    build:
+      context: .
+      target: deps
+    command: npm run build-watch
+    environment:
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./src:/app/src
+      - ./dist:/app/dist
+      - ./webpack.config.js:/app/webpack.config.js:ro
+
+  dev:
+    profiles: [dev]
+    image: nginx:1.28-alpine
+    ports:
+      - "${DEV_PORT:-8001}:80"
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro
+    depends_on:
+      - dev-build
+
+  # Plots: `docker compose run --rm plots [RUN ...] [--smooth 5] ...`
+  # Reads and writes Observations/ on the host, like running analysis/plot_metrics.py directly.
+  plots:
+    profiles: [tools]
+    build:
+      context: .
+      target: plots
+    volumes:
+      - ./analysis:/app/analysis:ro
+      - ./Observations:/app/Observations

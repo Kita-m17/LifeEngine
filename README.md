@@ -26,6 +26,15 @@ To load custom creations (found in `/dist/assets`), you must have a simple web s
  - run `python -m http.server --directory dist` from the repository root
  - Open `http://localhost:8000/` in your browser
 
+### Run with Docker
+With [Docker](https://docs.docker.com/get-docker/) installed, no node or python is needed:
+ - `docker compose up -d --build` builds the simulation and serves it at `http://localhost:27181` (or `http://<pi-address>:27181` from another machine). Run it again after changing the code.
+ - `docker compose up dev` rebuilds automatically when a file in `src/` changes, served at `http://localhost:8001`.
+ - `docker compose run --rm plots [RUN ...] [--smooth 5]` runs `analysis/plot_metrics.py` on the runs in `Observations/`.
+ - `docker compose down` stops it.
+
+The images build on any Raspberry Pi. Use 64-bit Raspberry Pi OS if you can, since newer Docker releases no longer support the 32-bit one. Install Docker on the Pi with `curl -fsSL https://get.docker.com | sh`, then clone the repository and build on the Pi itself. The web service restarts on its own after a reboot.
+
 ### Npm build commands
 - Production mode (minified): `npm run build`
 - Watch mode (dev mode that auto-builds when you save a file): `npm run build-watch`

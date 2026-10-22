@@ -1,0 +1,13 @@
+.git
+.github
+**/.DS_Store
+node_modules
+dist/js/bundle.js
+dist/js/bundle.js.LICENSE.txt
+Observations
+analysis
+docs
+*.zip
+Screenshot*.png
+Dockerfile
+docker-compose.yml
