@@ -15,7 +15,10 @@ FROM deps AS build
 COPY webpack.config.js ./
 COPY src ./src
 COPY dist ./dist
-RUN npm run build
+# Point index.html at ?v=<hash> URLs so caches (Cloudflare, browsers) fetch the new bundle after each build
+RUN npm run build \
+ && v=$(cat dist/js/bundle.js dist/css/style.css | md5sum | cut -c1-8) \
+ && sed -i "s#\./js/bundle\.js#./js/bundle.js?v=$v#; s#\./css/style\.css#./css/style.css?v=$v#" dist/index.html
 
 # Debian's packaged matplotlib, because PyPI has no 32-bit ARM wheels for it (pip would try to compile)
 FROM debian:trixie-slim AS plots
@@ -27,5 +30,6 @@ WORKDIR /app
 ENTRYPOINT ["python3", "analysis/plot_metrics.py"]
 
 FROM nginx:1.28-alpine AS web
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
